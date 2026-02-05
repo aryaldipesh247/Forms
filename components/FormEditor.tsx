@@ -17,25 +17,41 @@ interface FormEditorProps {
 
 const THEME_PRESETS = [
   { id: 'teal', color: '#008272', bg: '#f3f2f1', label: 'Classic' },
-  { id: 'tropical', color: '#00c853', bg: 'https://images.unsplash.com/photo-1540206395-6880f949034a', label: 'Tropical' },
-  { id: 'alpine', color: '#0277bd', bg: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b', label: 'Alpine' },
-  { id: 'nature', color: '#2e7d32', bg: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e', label: 'Nature' },
-  { id: 'beach', color: '#00acc1', bg: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e', label: 'Beach' },
-  { id: 'live-tropical', color: '#00c853', video: 'https://assets.mixkit.co/videos/preview/mixkit-tropical-island-aerial-view-4076-large.mp4', label: 'Live Tropical' },
-  { id: 'live-alpine', color: '#0277bd', video: 'https://assets.mixkit.co/videos/preview/mixkit-beautiful-mountain-landscape-under-mist-4431-large.mp4', label: 'Live Alpine' },
-  { id: 'live-nature', color: '#2e7d32', video: 'https://assets.mixkit.co/videos/preview/mixkit-forest-stream-in-the-sunlight-4444-large.mp4', label: 'Live Nature' },
-  { id: 'live-beach', color: '#00acc1', video: 'https://assets.mixkit.co/videos/preview/mixkit-waves-on-the-beach-at-sunset-4439-large.mp4', label: 'Live Beach' },
-  { id: 'live-blue', color: '#0078d4', video: 'https://assets.mixkit.co/videos/preview/mixkit-liquid-blue-background-9125-large.mp4', label: 'Live Blue' }
+  { id: 'professional', color: '#323130', bg: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2000&auto=format&fit=crop', label: 'Business' },
+  { id: 'academic', color: '#005a9e', bg: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?q=80&w=2000&auto=format&fit=crop', label: 'Education' },
+  { id: 'creative', color: '#d83b01', bg: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?q=80&w=2000&auto=format&fit=crop', label: 'Creative' },
+  { id: 'tech', color: '#4f6bed', bg: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2000&auto=format&fit=crop', label: 'Tech' },
+  { id: 'organic', color: '#107c10', bg: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=2000&auto=format&fit=crop', label: 'Nature' },
+  { id: 'event', color: '#b4009e', bg: 'https://images.unsplash.com/photo-1513151233558-d860c5398176?q=80&w=2000&auto=format&fit=crop', label: 'Celebration' },
+  { id: 'minimal', color: '#605e5c', bg: 'https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=2000&auto=format&fit=crop', label: 'Minimal' },
+  { id: 'vibrant', color: '#881798', bg: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2000&auto=format&fit=crop', label: 'Modern' },
+  { id: 'serene', color: '#0078d4', bg: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2000&auto=format&fit=crop', label: 'Beach' },
+  { id: 'sunset', color: '#ea4300', bg: 'https://images.unsplash.com/photo-1513002749550-c59d786b8e6c?q=80&w=2000&auto=format&fit=crop', label: 'Skyline' },
+  { id: 'midnight', color: '#252423', bg: 'https://images.unsplash.com/photo-1475274047050-1d0c0975c63e?q=80&w=2000&auto=format&fit=crop', label: 'Midnight' },
+  // New Themes Added
+  { id: 'ocean', color: '#005175', bg: 'https://images.unsplash.com/photo-1551244072-5d12893278ab?q=80&w=2000&auto=format&fit=crop', label: 'Ocean' },
+  { id: 'forest', color: '#2d4a22', bg: 'https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=2000&auto=format&fit=crop', label: 'Deep Forest' },
+  { id: 'autumn', color: '#8b4513', bg: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=2000&auto=format&fit=crop', label: 'Autumn' },
+  { id: 'nebula', color: '#4b0082', bg: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?q=80&w=2000&auto=format&fit=crop', label: 'Cosmos' },
+  { id: 'pastel', color: '#ff69b4', bg: 'https://images.unsplash.com/photo-1557683311-eac922347aa1?q=80&w=2000&auto=format&fit=crop', label: 'Pastel' },
+  { id: 'arctic', color: '#add8e6', bg: 'https://images.unsplash.com/photo-1517021897933-0e0319cfbc28?q=80&w=2000&auto=format&fit=crop', label: 'Arctic' },
+  { id: 'vintage', color: '#d2b48c', bg: 'https://images.unsplash.com/photo-1586075010633-244519635c17?q=80&w=2000&auto=format&fit=crop', label: 'Vintage' },
+  { id: 'cyber', color: '#00ffcc', bg: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2000&auto=format&fit=crop', label: 'Cyberpunk' },
+  { id: 'zen', color: '#556b2f', bg: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=2000&auto=format&fit=crop', label: 'Zen' },
+  { id: 'marble', color: '#708090', bg: 'https://images.unsplash.com/photo-1533154683836-84ea7a0bc310?q=80&w=2000&auto=format&fit=crop', label: 'Marble' },
+  { id: 'industrial', color: '#4a4a4a', bg: 'https://images.unsplash.com/photo-1481277542470-605612bd2d61?q=80&w=2000&auto=format&fit=crop', label: 'Gallery' },
+  { id: 'coffee', color: '#4e342e', bg: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=2000&auto=format&fit=crop', label: 'Cafe' }
 ];
 
 const STOCK_HEADER_MEDIA = [
   { type: 'none', url: '', label: 'None' },
-  { type: 'video', url: 'https://assets.mixkit.co/videos/preview/mixkit-tropical-island-aerial-view-4076-large.mp4', label: 'Live Tropical' },
-  { type: 'video', url: 'https://assets.mixkit.co/videos/preview/mixkit-beautiful-mountain-landscape-under-mist-4431-large.mp4', label: 'Live Alpine' },
-  { type: 'video', url: 'https://assets.mixkit.co/videos/preview/mixkit-forest-stream-in-the-sunlight-4444-large.mp4', label: 'Live Nature' },
-  { type: 'video', url: 'https://assets.mixkit.co/videos/preview/mixkit-waves-on-the-beach-at-sunset-4439-large.mp4', label: 'Live Beach' },
   { type: 'image', url: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174', label: 'Office' },
-  { type: 'video', url: 'https://assets.mixkit.co/videos/preview/mixkit-top-view-of-a-keyboard-and-a-mouse-4361-large.mp4', label: 'Typing' }
+  { type: 'image', url: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f', label: 'Collaboration' },
+  { type: 'image', url: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4', label: 'Workshop' },
+  { type: 'image', url: 'https://images.unsplash.com/photo-1454165833767-027ffea9e778', label: 'Planning' },
+  { type: 'image', url: 'https://images.unsplash.com/photo-1501504905252-473c47e087f8', label: 'Reading' },
+  { type: 'image', url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b', label: 'Mountains' },
+  { type: 'image', url: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3', label: 'Festival' }
 ];
 
 const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPreview, onViewResponses }) => {
@@ -298,7 +314,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
             </section>
 
             <section className="mb-8">
-               <h4 className="text-[9px] font-bold text-gray-400 uppercase mb-4">Stock Live Headers</h4>
+               <h4 className="text-[9px] font-bold text-gray-400 uppercase mb-4">Stock Image Headers</h4>
                <div className="grid grid-cols-2 gap-2 mb-4">
                  {STOCK_HEADER_MEDIA.map((stock, i) => (
                    <button 
@@ -306,15 +322,13 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
                       onClick={() => {
                         if (stock.type === 'none') {
                           updateForm({ theme: { ...theme, headerBackgroundImage: undefined, headerBackgroundVideoUrl: undefined } });
-                        } else if (stock.type === 'image') {
-                          updateForm({ theme: { ...theme, headerBackgroundImage: stock.url, headerBackgroundVideoUrl: undefined } });
                         } else {
-                          updateForm({ theme: { ...theme, headerBackgroundVideoUrl: stock.url, headerBackgroundImage: undefined } });
+                          updateForm({ theme: { ...theme, headerBackgroundImage: stock.url, headerBackgroundVideoUrl: undefined } });
                         }
                       }}
                       className="h-16 rounded border bg-gray-100 overflow-hidden relative group"
                     >
-                      {stock.type === 'none' ? <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-gray-400">NONE</div> : (stock.type === 'image' ? <img src={stock.url} className="w-full h-full object-cover" /> : <video src={stock.url} className="w-full h-full object-cover" muted autoPlay loop />)}
+                      {stock.type === 'none' ? <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-gray-400">NONE</div> : <img src={stock.url} className="w-full h-full object-cover" />}
                       <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center">
                         <span className="text-[7px] text-white font-bold uppercase">{stock.label}</span>
                       </div>
@@ -324,16 +338,15 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
             </section>
 
             <section className="mb-8">
-              <h4 className="text-[9px] font-bold text-gray-400 uppercase mb-4">Themes</h4>
+              <h4 className="text-[9px] font-bold text-gray-400 uppercase mb-4">Color & Image Themes</h4>
               <div className="grid grid-cols-2 gap-3">
                 {THEME_PRESETS.map(preset => (
                   <button 
                     key={preset.id} 
-                    onClick={() => updateForm({ theme: { ...theme, primaryColor: preset.color, backgroundColor: preset.video ? '#000000' : (preset.bg?.startsWith('http') ? '#f3f2f1' : preset.bg || '#f3f2f1'), backgroundImage: preset.bg?.startsWith('http') ? preset.bg : undefined, backgroundVideoUrl: preset.video, themePreset: preset.id } })}
+                    onClick={() => updateForm({ theme: { ...theme, primaryColor: preset.color, backgroundColor: (preset.bg?.startsWith('http') ? '#f3f2f1' : preset.bg || '#f3f2f1'), backgroundImage: preset.bg?.startsWith('http') ? preset.bg : undefined, backgroundVideoUrl: undefined, themePreset: preset.id } })}
                     className={`h-24 rounded border-2 relative overflow-hidden group ${theme.themePreset === preset.id ? 'border-[#008272]' : 'border-transparent'}`}
                     style={{ backgroundColor: preset.bg?.startsWith('http') ? '#eee' : preset.bg }}
                   >
-                     {preset.video && <video src={preset.video} className="w-full h-full object-cover" muted loop autoPlay />}
                      {preset.bg?.startsWith('http') && <img src={preset.bg} className="w-full h-full object-cover" />}
                      <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-all flex items-end p-2">
                        <span className="text-[8px] text-white font-black uppercase tracking-widest">{preset.label}</span>
