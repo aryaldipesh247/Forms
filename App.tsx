@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Form, View, FormResponse, User, ResponseArchive } from './types';
 import Dashboard from './components/Dashboard';
@@ -8,7 +9,8 @@ import RecycleBin from './components/RecycleBin';
 import Auth from './components/Auth';
 import Settings from './components/Settings';
 
-const USERS_STORAGE_KEY = 'forms_users_v11';
+// Unified storage key to match the cloud simulation in services
+const USERS_STORAGE_KEY = 'forms_pro_cloud_sync_v1';
 
 const App: React.FC = () => {
   const getInitialView = (): { view: View; id: string | null } => {
@@ -24,6 +26,7 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<View>(initial.view);
   const [activeFormId, setActiveFormId] = useState<string | null>(initial.id);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const saved = localStorage.getItem(USERS_STORAGE_KEY);
@@ -46,16 +49,8 @@ const App: React.FC = () => {
     }
     
     setUsers(currentUsers);
+    setIsLoading(false);
     
-    if (currentView === 'preview' && activeFormId) {
-      const allForms = currentUsers.flatMap(u => u.forms);
-      const exists = allForms.some(f => f.id === activeFormId);
-      if (!exists) {
-        setCurrentView('dashboard');
-        setActiveFormId(null);
-      }
-    }
-
     const handleHash = () => {
       const hash = window.location.hash;
       if (hash.startsWith('#preview/')) {
@@ -72,8 +67,10 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (users.length > 0) localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-  }, [users]);
+    if (!isLoading && users.length > 0) {
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+    }
+  }, [users, isLoading]);
 
   const handleUpdateUser = (updatedUser: User) => {
     const newUsers = users.map(u => u.id === updatedUser.id ? updatedUser : u);
@@ -157,6 +154,11 @@ const App: React.FC = () => {
 
   const activeForm = users.flatMap(u => u.forms).find(f => f.id === activeFormId) || null;
 
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center bg-[#f3f2f1] text-[#008272] font-black uppercase tracking-widest text-xs">Loading Forms...</div>;
+  }
+
+  // Bypass login screen for direct preview links
   if (!currentUser && currentView !== 'preview') {
     return (
       <Auth 
@@ -169,7 +171,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col relative" style={{ backgroundColor: currentView === 'preview' ? activeForm?.theme?.backgroundColor : '#f3f2f1' }}>
+    <div className="min-h-screen flex flex-col relative" style={{ backgroundColor: currentView === 'preview' ? activeForm?.theme?.backgroundColor || '#f3f2f1' : '#f3f2f1' }}>
       {currentView !== 'preview' && (
         <header className="bg-[#008272] px-6 h-12 flex justify-between items-center z-50 text-white shadow sticky top-0">
           <div className="flex items-center gap-3">
@@ -216,32 +218,42 @@ const App: React.FC = () => {
             onUpdate={updated => handleUpdateForms(currentUser!.forms.map(f => f.id === updated.id ? updated : f))}
           />
         )}
-        {currentView === 'preview' && activeForm && (
-          <FormPreview 
-            form={activeForm} 
-            isGuest={!currentUser}
-            onBack={() => {
-              if (currentUser) {
-                setCurrentView('editor');
-                window.location.hash = '';
-              } else {
-                setCurrentView('dashboard'); 
-              }
-            }} 
-            onSubmit={answers => {
-              const owner = users.find(u => u.forms.some(f => f.id === activeForm.id))!;
-              let sn = 1;
-              const uUser = { ...owner, forms: owner.forms.map(f => {
-                if (f.id === activeForm.id) { 
-                  sn = f.responses.length + 1; 
-                  return { ...f, responses: [...f.responses, { id: Math.random().toString(36).substr(2, 9), formId: f.id, timestamp: new Date().toISOString(), answers, serialNumber: sn }] }; 
+        {currentView === 'preview' && (
+          activeForm ? (
+            <FormPreview 
+              form={activeForm} 
+              isGuest={!currentUser}
+              onBack={() => {
+                if (currentUser) {
+                  setCurrentView('editor');
+                  window.location.hash = '';
+                } else {
+                  setCurrentView('dashboard'); 
                 }
-                return f;
-              })};
-              handleUpdateUser(uUser); 
-              return sn;
-            }}
-          />
+              }} 
+              onSubmit={answers => {
+                const owner = users.find(u => u.forms.some(f => f.id === activeForm.id))!;
+                let sn = 1;
+                const updatedForms = owner.forms.map(f => {
+                  if (f.id === activeForm.id) { 
+                    sn = f.responses.length + 1; 
+                    return { ...f, responses: [...f.responses, { id: Math.random().toString(36).substr(2, 9), formId: f.id, timestamp: new Date().toISOString(), answers, serialNumber: sn }] }; 
+                  }
+                  return f;
+                });
+                handleUpdateUser({ ...owner, forms: updatedForms }); 
+                return sn;
+              }}
+            />
+          ) : (
+            <div className="min-h-screen flex items-center justify-center p-6 bg-[#f3f2f1]">
+              <div className="bg-white p-12 rounded-xl shadow-xl text-center max-w-sm">
+                <h2 className="text-2xl font-black text-red-500 mb-2">Form Not Found</h2>
+                <p className="text-gray-500 text-sm mb-6">The form you are looking for doesn't exist or has been deleted.</p>
+                <button onClick={() => { window.location.hash = ''; setCurrentView('dashboard'); }} className="w-full bg-[#008272] text-white py-3 rounded font-bold uppercase text-xs tracking-widest">Return Home</button>
+              </div>
+            </div>
+          )
         )}
         {currentView === 'responses' && activeForm && (
           <ResponseDashboard 

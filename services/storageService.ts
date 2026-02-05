@@ -1,7 +1,7 @@
 
 import { User } from '../types';
 
-const STORAGE_KEY = 'forms_pro_storage_v1';
+const STORAGE_KEY = 'forms_pro_cloud_sync_v1';
 
 export const saveUser = async (user: User): Promise<void> => {
   try {
