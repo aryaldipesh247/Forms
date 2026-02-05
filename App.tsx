@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Form, View, FormResponse, User, ResponseArchive } from './types';
 import Dashboard from './components/Dashboard';
 import FormEditor from './components/FormEditor';
@@ -28,6 +27,18 @@ const App: React.FC = () => {
   const [activeFormId, setActiveFormId] = useState<string | null>(initial.id);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Robust form resolution logic to ensure we always find the form if it exists
+  const activeForm = useMemo(() => {
+    if (!activeFormId) return null;
+    // Check current user first for the most immediate state
+    if (currentUser) {
+      const found = currentUser.forms.find(f => f.id === activeFormId);
+      if (found) return found;
+    }
+    // Fallback to checking all users (important for guest preview links)
+    return users.flatMap(u => u.forms).find(f => f.id === activeFormId) || null;
+  }, [users, currentUser, activeFormId]);
+
   useEffect(() => {
     const saved = localStorage.getItem(USERS_STORAGE_KEY);
     let currentUsers: User[] = [];
@@ -50,7 +61,10 @@ const App: React.FC = () => {
     
     setUsers(currentUsers);
     setIsLoading(false);
-    
+  }, []);
+
+  // Sync hash changes with state
+  useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash;
       if (hash.startsWith('#preview/')) {
@@ -63,8 +77,10 @@ const App: React.FC = () => {
     };
 
     window.addEventListener('hashchange', handleHash);
+    // Trigger on mount too
+    handleHash();
     return () => window.removeEventListener('hashchange', handleHash);
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     if (!isLoading && users.length > 0) {
@@ -73,9 +89,16 @@ const App: React.FC = () => {
   }, [users, isLoading]);
 
   const handleUpdateUser = (updatedUser: User) => {
-    const newUsers = users.map(u => u.id === updatedUser.id ? updatedUser : u);
-    setUsers(newUsers);
-    if (currentUser && currentUser.id === updatedUser.id) setCurrentUser(updatedUser);
+    setUsers(prevUsers => {
+      const exists = prevUsers.some(u => u.id === updatedUser.id);
+      if (exists) {
+        return prevUsers.map(u => u.id === updatedUser.id ? updatedUser : u);
+      }
+      return [...prevUsers, updatedUser];
+    });
+    if (currentUser && currentUser.id === updatedUser.id) {
+      setCurrentUser(updatedUser);
+    }
   };
 
   const handleUpdateForms = (updatedForms: Form[]) => {
@@ -152,8 +175,6 @@ const App: React.FC = () => {
     handleUpdateForms([...currentUser.forms, duplicated]);
   };
 
-  const activeForm = users.flatMap(u => u.forms).find(f => f.id === activeFormId) || null;
-
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-[#f3f2f1] text-[#008272] font-black uppercase tracking-widest text-xs">Loading Forms...</div>;
   }
@@ -164,7 +185,9 @@ const App: React.FC = () => {
       <Auth 
         onLogin={u => { setCurrentUser(u); setCurrentView('dashboard'); window.location.hash = ''; }} 
         users={users} 
-        onRegister={u => setUsers([...users, u])} 
+        onRegister={u => {
+           setUsers(prev => [...prev, u]);
+        }} 
         onUpdateUser={handleUpdateUser} 
       />
     );
@@ -177,14 +200,14 @@ const App: React.FC = () => {
           <div className="flex items-center gap-3">
             <span 
               className="font-bold text-xl cursor-pointer hover:opacity-90" 
-              onClick={() => { setCurrentView('dashboard'); window.location.hash = ''; }}
+              onClick={() => { setCurrentView('dashboard'); window.location.hash = ''; setActiveFormId(null); }}
             >
               Forms
             </span>
           </div>
           <div className="flex items-center gap-4">
             <button onClick={() => setCurrentView('settings')} className="text-xs font-bold uppercase tracking-widest hover:opacity-80">Settings</button>
-            <button onClick={() => { setCurrentUser(null); setCurrentView('dashboard'); window.location.hash = ''; }} className="text-[10px] font-black uppercase bg-white/10 px-3 py-1.5 rounded hover:bg-white/20 transition-colors">Log Out</button>
+            <button onClick={() => { setCurrentUser(null); setCurrentView('dashboard'); window.location.hash = ''; setActiveFormId(null); }} className="text-[10px] font-black uppercase bg-white/10 px-3 py-1.5 rounded hover:bg-white/20 transition-colors">Log Out</button>
           </div>
         </header>
       )}
@@ -194,9 +217,18 @@ const App: React.FC = () => {
           <Dashboard 
             forms={currentUser.forms.filter(f => !f.deletedAt)} 
             onCreate={() => {
-              const f: Form = { id: Math.random().toString(36).substr(2, 9), title: 'Untitled Form', descriptions: [], questions: [], createdAt: new Date().toISOString(), responses: [] };
-              handleUpdateForms([...currentUser.forms, f]);
-              setActiveFormId(f.id); setCurrentView('editor');
+              const f: Form = { 
+                id: Math.random().toString(36).substr(2, 9), 
+                title: 'Untitled Form', 
+                descriptions: [], 
+                questions: [], 
+                createdAt: new Date().toISOString(), 
+                responses: [] 
+              };
+              const updatedForms = [...currentUser.forms, f];
+              handleUpdateForms(updatedForms);
+              setActiveFormId(f.id); 
+              setCurrentView('editor');
             }}
             onSelect={id => { setActiveFormId(id); setCurrentView('editor'); }}
             onDelete={id => handleUpdateForms(currentUser.forms.map(f => f.id === id ? {...f, deletedAt: new Date().toISOString()} : f))}
@@ -207,12 +239,18 @@ const App: React.FC = () => {
         )}
         {currentView === 'editor' && activeForm && (
           <FormEditor 
-            form={activeForm} onBack={() => { setCurrentView('dashboard'); window.location.hash = ''; }} onPreview={() => { setCurrentView('preview'); window.location.hash = `preview/${activeForm.id}`; }}
+            form={activeForm} 
+            onBack={() => { setCurrentView('dashboard'); window.location.hash = ''; setActiveFormId(null); }} 
+            onPreview={() => { 
+              window.location.hash = `preview/${activeForm.id}`;
+              setCurrentView('preview'); 
+            }}
             onViewResponses={() => setCurrentView('responses')} 
             onDelete={() => {
               if (window.confirm('Are you sure you want to move this form to the Recycle Bin?')) {
                 handleUpdateForms(currentUser!.forms.map(f => f.id === activeForm.id ? {...f, deletedAt: new Date().toISOString()} : f));
                 setCurrentView('dashboard');
+                setActiveFormId(null);
               }
             }} 
             onUpdate={updated => handleUpdateForms(currentUser!.forms.map(f => f.id === updated.id ? updated : f))}
@@ -232,7 +270,7 @@ const App: React.FC = () => {
                 }
               }} 
               onSubmit={answers => {
-                const owner = users.find(u => u.forms.some(f => f.id === activeForm.id))!;
+                const owner = users.find(u => u.forms.some(f => f.id === activeForm.id)) || currentUser!;
                 let sn = 1;
                 const updatedForms = owner.forms.map(f => {
                   if (f.id === activeForm.id) { 
@@ -250,7 +288,7 @@ const App: React.FC = () => {
               <div className="bg-white p-12 rounded-xl shadow-xl text-center max-w-sm">
                 <h2 className="text-2xl font-black text-red-500 mb-2">Form Not Found</h2>
                 <p className="text-gray-500 text-sm mb-6">The form you are looking for doesn't exist or has been deleted.</p>
-                <button onClick={() => { window.location.hash = ''; setCurrentView('dashboard'); }} className="w-full bg-[#008272] text-white py-3 rounded font-bold uppercase text-xs tracking-widest">Return Home</button>
+                <button onClick={() => { window.location.hash = ''; setCurrentView('dashboard'); setActiveFormId(null); }} className="w-full bg-[#008272] text-white py-3 rounded font-bold uppercase text-xs tracking-widest">Return Home</button>
               </div>
             </div>
           )

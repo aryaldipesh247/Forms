@@ -184,9 +184,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin, users, onRegister, onUpdateUser })
             </div>
             <h1 className="text-[#008272] text-6xl font-bold tracking-tight">Forms</h1>
           </div>
-          <p className="text-2xl text-[#323130] leading-tight font-medium">
-            Professional surveys, quizzes, and tracking.
-          </p>
         </div>
 
         <div className="md:w-[420px] w-full bg-white/85 backdrop-blur-md p-8 rounded-md shadow-2xl border border-[#edebe9]">
