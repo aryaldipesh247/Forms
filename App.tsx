@@ -36,8 +36,12 @@ const App: React.FC = () => {
     };
 
     if (saved) {
-      currentUsers = JSON.parse(saved);
-      if (!currentUsers.find(u => u.email === adminUser.email)) currentUsers.push(adminUser);
+      try {
+        currentUsers = JSON.parse(saved);
+        if (!currentUsers.find(u => u.email === adminUser.email)) currentUsers.push(adminUser);
+      } catch (e) {
+        currentUsers = [adminUser];
+      }
     } else {
       currentUsers = [adminUser];
     }
@@ -138,6 +142,20 @@ const App: React.FC = () => {
     handleUpdateForms(updatedForms);
   };
 
+  const handleDuplicateForm = (formToDup: Form) => {
+    if (!currentUser) return;
+    const duplicated: Form = {
+      ...formToDup,
+      id: Math.random().toString(36).substr(2, 9),
+      title: `${formToDup.title} (Copy)`,
+      responses: [],
+      createdAt: new Date().toISOString(),
+      deletedAt: undefined,
+      archivedResponseSets: []
+    };
+    handleUpdateForms([...currentUser.forms, duplicated]);
+  };
+
   const activeForm = users.flatMap(u => u.forms).find(f => f.id === activeFormId) || null;
 
   if (!currentUser && currentView !== 'preview') {
@@ -156,11 +174,16 @@ const App: React.FC = () => {
       {currentView !== 'preview' && (
         <header className="bg-[#008272] px-6 h-12 flex justify-between items-center z-50 text-white shadow sticky top-0">
           <div className="flex items-center gap-3">
-            <span className="font-bold text-xl">Form</span>
+            <span 
+              className="font-bold text-xl cursor-pointer hover:opacity-90" 
+              onClick={() => { setCurrentView('dashboard'); window.location.hash = ''; }}
+            >
+              Form
+            </span>
           </div>
           <div className="flex items-center gap-4">
-            <button onClick={() => setCurrentView('settings')} className="text-xs font-bold uppercase tracking-widest">Settings</button>
-            <button onClick={() => { setCurrentUser(null); setCurrentView('dashboard'); window.location.hash = ''; }} className="text-[10px] font-black uppercase bg-white/10 px-3 py-1.5 rounded">Log Out</button>
+            <button onClick={() => setCurrentView('settings')} className="text-xs font-bold uppercase tracking-widest hover:opacity-80">Settings</button>
+            <button onClick={() => { setCurrentUser(null); setCurrentView('dashboard'); window.location.hash = ''; }} className="text-[10px] font-black uppercase bg-white/10 px-3 py-1.5 rounded hover:bg-white/20 transition-colors">Log Out</button>
           </div>
         </header>
       )}
@@ -176,13 +199,21 @@ const App: React.FC = () => {
             }}
             onSelect={id => { setActiveFormId(id); setCurrentView('editor'); }}
             onDelete={id => handleUpdateForms(currentUser.forms.map(f => f.id === id ? {...f, deletedAt: new Date().toISOString()} : f))}
-            onDuplicate={() => {}} onViewResponses={id => { setActiveFormId(id); setCurrentView('responses'); }} onViewRecycleBin={() => setCurrentView('recycle-bin')}
+            onDuplicate={handleDuplicateForm}
+            onViewResponses={id => { setActiveFormId(id); setCurrentView('responses'); }} 
+            onViewRecycleBin={() => setCurrentView('recycle-bin')}
           />
         )}
         {currentView === 'editor' && activeForm && (
           <FormEditor 
             form={activeForm} onBack={() => { setCurrentView('dashboard'); window.location.hash = ''; }} onPreview={() => { setCurrentView('preview'); window.location.hash = `preview/${activeForm.id}`; }}
-            onViewResponses={() => setCurrentView('responses')} onDelete={() => {}} 
+            onViewResponses={() => setCurrentView('responses')} 
+            onDelete={() => {
+              if (window.confirm('Are you sure you want to move this form to the Recycle Bin?')) {
+                handleUpdateForms(currentUser!.forms.map(f => f.id === activeForm.id ? {...f, deletedAt: new Date().toISOString()} : f));
+                setCurrentView('dashboard');
+              }
+            }} 
             onUpdate={updated => handleUpdateForms(currentUser!.forms.map(f => f.id === updated.id ? updated : f))}
           />
         )}

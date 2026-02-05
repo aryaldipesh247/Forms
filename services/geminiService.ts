@@ -11,7 +11,6 @@ export const generateQuestionsFromAI = async (topic: string) => {
                For CHOICE, provide 3-5 sensible options.
                Return a structured JSON array.`,
     config: {
-      // Pro models require a non-zero thinking budget for reasoning tasks.
       thinkingConfig: { thinkingBudget: 16000 },
       responseMimeType: "application/json",
       responseSchema: {
@@ -62,7 +61,6 @@ export const suggestThemeFromAI = async (title: string, description: string): Pr
     contents: `Based on this form title: "${title}" and description: "${description}", suggest a professional color palette.
                Return a JSON object with primaryColor (hex) and a short keyword for a background image (e.g., "minimalist", "coffee", "corporate").`,
     config: {
-      thinkingConfig: { thinkingBudget: 4000 },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -77,10 +75,11 @@ export const suggestThemeFromAI = async (title: string, description: string): Pr
 
   try {
     const res = JSON.parse(response.text || "{}");
+    const keyword = res.bgKeyword || 'professional';
     return {
       primaryColor: res.primaryColor || '#008272',
       backgroundColor: '#f3f2f1',
-      backgroundImage: `https://source.unsplash.com/featured/?${res.bgKeyword || 'abstract'}`
+      backgroundImage: `https://images.unsplash.com/photo-1497215728101-856f4ea42174?q=80&w=2000&auto=format&fit=crop` 
     };
   } catch (e) {
     return { primaryColor: '#008272' };
@@ -108,10 +107,7 @@ export const generateInsightsFromAI = async (form: Form): Promise<string> => {
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        thinkingConfig: { thinkingBudget: 4000 }
-      }
+      contents: prompt
     });
     return response.text || "No insights could be generated at this time.";
   } catch (e) {

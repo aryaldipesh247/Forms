@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Question, QuestionType, TextFormat, ChoiceOption, BranchingConfig } from '../types';
 
@@ -119,6 +118,15 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
             placeholder="Enter Question Box..." 
             className={`w-full text-2xl border-none focus:ring-0 focus:outline-none placeholder-[#a19f9d] text-[#323130] bg-transparent ${question.titleFormatting?.bold ? 'font-black' : 'font-normal'} ${question.titleFormatting?.italic ? 'italic' : ''}`} 
           />
+          {question.showSubtitle && (
+            <input 
+              type="text" 
+              value={question.subtitle || ''} 
+              onChange={e => updateProp('subtitle', e.target.value)} 
+              placeholder="Add a subtitle" 
+              className="w-full text-sm border-none focus:ring-0 focus:outline-none text-gray-400 bg-transparent italic mt-1" 
+            />
+          )}
         </div>
       </div>
 
@@ -211,6 +219,13 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
               {question.enableBranching && <BranchingSelector questions={allQuestions.filter(aq => aq.id !== question.id)} value={question.branching} onChange={v => updateProp('branching', v)} />}
            </div>
         )}
+        
+        {question.type === QuestionType.DATE && (
+           <div className="space-y-4">
+              <div className="w-full border-b-2 border-dashed border-gray-100 py-4 text-gray-300 text-sm font-bold italic">User will select date here...</div>
+              {question.enableBranching && <BranchingSelector questions={allQuestions.filter(aq => aq.id !== question.id)} value={question.branching} onChange={v => updateProp('branching', v)} />}
+           </div>
+        )}
       </div>
 
       <div className="mt-12 pt-8 border-t flex justify-end gap-8 items-center">
@@ -226,7 +241,9 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
               <button onClick={() => { updateProp('enableBranching', !question.enableBranching); setShowMenu(false); }} className={`w-full text-left px-5 py-3 text-xs font-bold uppercase ${question.enableBranching ? 'text-[#008272]' : 'text-gray-700'} hover:bg-gray-50`}>
                 {question.enableBranching ? '✓ Branching Settings' : 'Branching Settings'}
               </button>
-              <button onClick={() => { updateProp('showSubtitle', !question.showSubtitle); setShowMenu(false); }} className="w-full text-left px-5 py-3 text-xs font-bold uppercase hover:bg-gray-50">Subtitle</button>
+              <button onClick={() => { updateProp('showSubtitle', !question.showSubtitle); setShowMenu(false); }} className={`w-full text-left px-5 py-3 text-xs font-bold uppercase ${question.showSubtitle ? 'text-[#008272]' : 'text-gray-700'} hover:bg-gray-50`}>
+                {question.showSubtitle ? '✓ Subtitle' : 'Subtitle'}
+              </button>
             </div>
           )}
         </div>

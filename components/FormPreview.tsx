@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useRef } from 'react';
 import { Form, QuestionType, Question } from '../types';
 import { Reorder } from 'framer-motion';
@@ -247,7 +246,9 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
 
         {currentQuestions.map((q, idx) => (
           <div key={q.id} className="bg-white/95 backdrop-blur-md p-10 rounded shadow-lg border-l-[8px]" style={{ borderLeftColor: theme.primaryColor }}>
-            <h3 className="text-xl font-bold mb-8">{idx + 1}. {q.title}</h3>
+            <h3 className={`text-xl font-bold ${q.subtitle ? 'mb-2' : 'mb-8'}`}>{idx + 1}. {q.title}</h3>
+            {q.subtitle && <p className="text-sm text-gray-500 mb-8 italic">{q.subtitle}</p>}
+            
             {q.type === QuestionType.RANKING && <RankingQuestion q={q} onAnswer={val => handleAnswer(q.id, val)} />}
             {q.type === QuestionType.DOUBLE_RANKING_BOX && <DoubleBoxQuestion q={q} answers={answers[q.id]} onAnswer={val => handleAnswer(q.id, val)} />}
             {q.type === QuestionType.IMAGE_UPLOAD && <ImageUploadQuestion q={q} value={answers[q.id]} onAnswer={val => handleAnswer(q.id, val)} />}
