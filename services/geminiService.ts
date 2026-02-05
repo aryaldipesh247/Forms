@@ -1,8 +1,8 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
-import { QuestionType, FormTheme } from "../types";
+import { QuestionType, FormTheme, Form } from "../types";
 
 export const generateQuestionsFromAI = async (topic: string) => {
-  // Use named parameter as per standard guidelines
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const response = await ai.models.generateContent({
     model: 'gemini-3-pro-preview',
@@ -11,6 +11,8 @@ export const generateQuestionsFromAI = async (topic: string) => {
                For CHOICE, provide 3-5 sensible options.
                Return a structured JSON array.`,
     config: {
+      // Pro models require a non-zero thinking budget for reasoning tasks.
+      thinkingConfig: { thinkingBudget: 16000 },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.ARRAY,
@@ -36,7 +38,6 @@ export const generateQuestionsFromAI = async (topic: string) => {
   });
 
   try {
-    // Access .text property directly (not a method)
     const text = response.text || "[]";
     const raw = JSON.parse(text);
     return raw.map((q: any) => ({
@@ -61,6 +62,7 @@ export const suggestThemeFromAI = async (title: string, description: string): Pr
     contents: `Based on this form title: "${title}" and description: "${description}", suggest a professional color palette.
                Return a JSON object with primaryColor (hex) and a short keyword for a background image (e.g., "minimalist", "coffee", "corporate").`,
     config: {
+      thinkingConfig: { thinkingBudget: 4000 },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -82,5 +84,38 @@ export const suggestThemeFromAI = async (title: string, description: string): Pr
     };
   } catch (e) {
     return { primaryColor: '#008272' };
+  }
+};
+
+export const generateInsightsFromAI = async (form: Form): Promise<string> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
+  const simplifiedResponses = form.responses.map(r => ({
+    answers: r.answers
+  }));
+
+  const prompt = `Analyze the survey results for "${form.title}".
+  Questions: ${form.questions.map(q => q.title).join(', ')}
+  Responses: ${JSON.stringify(simplifiedResponses)}
+  
+  Provide a professional summary with:
+  1. A 'Key Takeaways' section.
+  2. A 'Sentiment Analysis' (Positive/Neutral/Negative).
+  3. Three 'Actionable Recommendations'.
+  
+  Use Markdown formatting for a clean look. Keep it concise.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        thinkingConfig: { thinkingBudget: 4000 }
+      }
+    });
+    return response.text || "No insights could be generated at this time.";
+  } catch (e) {
+    console.error("AI Insights failed", e);
+    return "Failed to connect to the AI analyst. Please try again later.";
   }
 };

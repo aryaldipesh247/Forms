@@ -183,7 +183,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, users, onRegister, onUpdateUser })
             <div className="w-16 h-16 bg-[#008272] flex items-center justify-center rounded shadow-lg">
                 <svg className="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M19,3H5C3.89,3 3,3.89 3,5V19C3,20.11 3.89,21 5,21H19C20.11,21 21,20.11 21,19V5C21,3.89 20.11,3 19,3M19,19H5V5H19V19M17,17H7V15H17V17M17,13H7V11H17V13M17,9H7V7H17V9Z"/></svg>
             </div>
-            <h1 className="text-[#008272] text-6xl font-bold tracking-tight">Forms Pro</h1>
+            <h1 className="text-[#008272] text-6xl font-bold tracking-tight">Form</h1>
           </div>
           <p className="text-2xl text-[#323130] leading-tight font-medium">
             Professional surveys, quizzes, and tracking.
@@ -269,7 +269,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, users, onRegister, onUpdateUser })
       <footer className="mt-20 w-full max-w-5xl text-gray-500 text-[11px] border-t border-[#edebe9] pt-8">
         <div className="flex flex-wrap justify-between gap-4">
           <div className="flex gap-4">
-            <span>© 2026 Forms Pro Service</span>
+            <span>© 2026 Form Service</span>
             <span className="hover:underline cursor-pointer">Privacy & Cookies</span>
             <span className="hover:underline cursor-pointer">Terms of Use</span>
           </div>

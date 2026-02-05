@@ -1,3 +1,4 @@
+
 import { User } from '../types';
 
 const STORAGE_KEY = 'forms_pro_storage_v1';

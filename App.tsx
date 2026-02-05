@@ -12,7 +12,6 @@ import Settings from './components/Settings';
 const USERS_STORAGE_KEY = 'forms_users_v11';
 
 const App: React.FC = () => {
-  // Initialize state based on hash to avoid login redirect on shared links
   const getInitialView = (): { view: View; id: string | null } => {
     const hash = window.location.hash;
     if (hash.startsWith('#preview/')) {
@@ -45,12 +44,10 @@ const App: React.FC = () => {
     
     setUsers(currentUsers);
     
-    // If we are in preview mode, ensure we have the users loaded to find the form
     if (currentView === 'preview' && activeFormId) {
       const allForms = currentUsers.flatMap(u => u.forms);
       const exists = allForms.some(f => f.id === activeFormId);
       if (!exists) {
-        // If form doesn't exist, go to dashboard/auth
         setCurrentView('dashboard');
         setActiveFormId(null);
       }
@@ -141,10 +138,8 @@ const App: React.FC = () => {
     handleUpdateForms(updatedForms);
   };
 
-  // Find active form globally (so preview works for guests)
   const activeForm = users.flatMap(u => u.forms).find(f => f.id === activeFormId) || null;
 
-  // Crucial fix: Only show Auth if no user AND not in preview mode
   if (!currentUser && currentView !== 'preview') {
     return (
       <Auth 
@@ -161,7 +156,7 @@ const App: React.FC = () => {
       {currentView !== 'preview' && (
         <header className="bg-[#008272] px-6 h-12 flex justify-between items-center z-50 text-white shadow sticky top-0">
           <div className="flex items-center gap-3">
-            <span className="font-bold text-xl">Forms Pro</span>
+            <span className="font-bold text-xl">Form</span>
           </div>
           <div className="flex items-center gap-4">
             <button onClick={() => setCurrentView('settings')} className="text-xs font-bold uppercase tracking-widest">Settings</button>
@@ -200,7 +195,7 @@ const App: React.FC = () => {
                 setCurrentView('editor');
                 window.location.hash = '';
               } else {
-                setCurrentView('dashboard'); // This will trigger Auth for guests
+                setCurrentView('dashboard'); 
               }
             }} 
             onSubmit={answers => {
