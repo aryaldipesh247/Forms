@@ -1,0 +1,8 @@
+{
+  "name": "Forms",
+  "description": "A high-fidelity Microsoft Forms replica for creating, managing, and analyzing surveys and quizzes with AI-powered question generation.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
