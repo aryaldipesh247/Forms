@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface ShareDialogProps {
@@ -7,6 +6,8 @@ interface ShareDialogProps {
 }
 
 const ShareDialog: React.FC<ShareDialogProps> = ({ formId, onClose }) => {
+  // Ensure the pathname includes a trailing slash if needed before the hash
+  const pathname = window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname + '/';
   const shareUrl = `${window.location.origin}${window.location.pathname}#preview/${formId}`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(shareUrl)}`;
 
@@ -35,7 +36,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({ formId, onClose }) => {
         </div>
 
         <div className="flex flex-col items-center mb-8 bg-[#faf9f8] p-8 rounded-xl border border-dashed border-[#edebe9]">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 mb-6">
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 mb-6 hover:scale-105 transition-transform">
             <img src={qrUrl} alt="Form QR Code" className="w-40 h-40 object-contain" />
           </div>
           <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#008272]">Scan to open form</p>

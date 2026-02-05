@@ -12,7 +12,7 @@ import Settings from './components/Settings';
 const USERS_STORAGE_KEY = 'forms_pro_cloud_sync_v1';
 
 const App: React.FC = () => {
-  const getInitialView = (): { view: View; id: string | null } => {
+  const getInitialViewFromHash = (): { view: View; id: string | null } => {
     const hash = window.location.hash;
     if (hash.startsWith('#preview/')) {
       return { view: 'preview', id: hash.replace('#preview/', '') };
@@ -20,50 +20,14 @@ const App: React.FC = () => {
     return { view: 'dashboard', id: null };
   };
 
-  const initial = getInitialView();
+  const initial = getInitialViewFromHash();
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<View>(initial.view);
   const [activeFormId, setActiveFormId] = useState<string | null>(initial.id);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Robust form resolution logic to ensure we always find the form if it exists
-  const activeForm = useMemo(() => {
-    if (!activeFormId) return null;
-    // Check current user first for the most immediate state
-    if (currentUser) {
-      const found = currentUser.forms.find(f => f.id === activeFormId);
-      if (found) return found;
-    }
-    // Fallback to checking all users (important for guest preview links)
-    return users.flatMap(u => u.forms).find(f => f.id === activeFormId) || null;
-  }, [users, currentUser, activeFormId]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem(USERS_STORAGE_KEY);
-    let currentUsers: User[] = [];
-    
-    const adminUser: User = {
-      id: 'admin-access-jungdai',
-      email: 'Jungdai@1', password: 'Jungdai@1', pin: '1111', firstName: 'Admin', lastName: 'Jung', forms: []
-    };
-
-    if (saved) {
-      try {
-        currentUsers = JSON.parse(saved);
-        if (!currentUsers.find(u => u.email === adminUser.email)) currentUsers.push(adminUser);
-      } catch (e) {
-        currentUsers = [adminUser];
-      }
-    } else {
-      currentUsers = [adminUser];
-    }
-    
-    setUsers(currentUsers);
-    setIsLoading(false);
-  }, []);
-
-  // Sync hash changes with state
+  // Synchronize hash changes with the application state
   useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash;
@@ -72,21 +36,68 @@ const App: React.FC = () => {
         setActiveFormId(id); 
         setCurrentView('preview');
       } else if (hash === '' || hash === '#') {
-        if (!currentUser) setCurrentView('dashboard');
+        // Only return to dashboard if we aren't already there and no other view is explicitly set
+        if (!currentUser && currentView !== 'dashboard' && !hash.includes('#preview/')) {
+          setCurrentView('dashboard');
+        }
       }
     };
 
     window.addEventListener('hashchange', handleHash);
-    // Trigger on mount too
-    handleHash();
+    handleHash(); // Initial check
     return () => window.removeEventListener('hashchange', handleHash);
-  }, [currentUser]);
+  }, [currentUser, currentView]);
 
+  // Load data from simulated cloud storage
   useEffect(() => {
-    if (!isLoading && users.length > 0) {
+    const loadUsers = () => {
+      const saved = localStorage.getItem(USERS_STORAGE_KEY);
+      let currentUsers: User[] = [];
+      
+      const adminUser: User = {
+        id: 'admin-access-jungdai',
+        email: 'Jungdai@1', password: 'Jungdai@1', pin: '1111', firstName: 'Admin', lastName: 'Jung', forms: []
+      };
+
+      if (saved) {
+        try {
+          currentUsers = JSON.parse(saved);
+          if (!currentUsers.find(u => u.email === adminUser.email)) currentUsers.push(adminUser);
+        } catch (e) {
+          currentUsers = [adminUser];
+        }
+      } else {
+        currentUsers = [adminUser];
+      }
+      
+      setUsers(currentUsers);
+      setIsLoading(false);
+    };
+
+    loadUsers();
+  }, []);
+
+  // Persist user state changes to storage
+  useEffect(() => {
+    if (!isLoading) {
       localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
     }
   }, [users, isLoading]);
+
+  // Compute the active form based on ID and user context
+  const activeForm = useMemo(() => {
+    if (!activeFormId) return null;
+    
+    // Check currently logged in user first for fast updates
+    if (currentUser) {
+      const localForm = currentUser.forms.find(f => f.id === activeFormId);
+      if (localForm) return localForm;
+    }
+
+    // Comprehensive search across all stored users (critical for guest preview links)
+    const globalForm = users.flatMap(u => u.forms).find(f => f.id === activeFormId);
+    return globalForm || null;
+  }, [users, currentUser, activeFormId]);
 
   const handleUpdateUser = (updatedUser: User) => {
     setUsers(prevUsers => {
@@ -96,6 +107,7 @@ const App: React.FC = () => {
       }
       return [...prevUsers, updatedUser];
     });
+    
     if (currentUser && currentUser.id === updatedUser.id) {
       setCurrentUser(updatedUser);
     }
@@ -176,18 +188,29 @@ const App: React.FC = () => {
   };
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-[#f3f2f1] text-[#008272] font-black uppercase tracking-widest text-xs">Loading Forms...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f3f2f1]">
+        <div className="text-[#008272] font-black uppercase tracking-widest text-xs animate-pulse">
+          Initializing Cloud Sync...
+        </div>
+      </div>
+    );
   }
 
-  // Bypass login screen for direct preview links
-  if (!currentUser && currentView !== 'preview') {
+  // Determine if we should bypass the login screen for a direct preview
+  const isDirectPreview = window.location.hash.startsWith('#preview/');
+  const shouldShowAuth = !currentUser && currentView !== 'preview' && !isDirectPreview;
+
+  if (shouldShowAuth) {
     return (
       <Auth 
-        onLogin={u => { setCurrentUser(u); setCurrentView('dashboard'); window.location.hash = ''; }} 
-        users={users} 
-        onRegister={u => {
-           setUsers(prev => [...prev, u]);
+        onLogin={u => { 
+          setCurrentUser(u); 
+          setCurrentView('dashboard'); 
+          window.location.hash = ''; 
         }} 
+        users={users} 
+        onRegister={u => setUsers(prev => [...prev, u])} 
         onUpdateUser={handleUpdateUser} 
       />
     );
@@ -199,15 +222,29 @@ const App: React.FC = () => {
         <header className="bg-[#008272] px-6 h-12 flex justify-between items-center z-50 text-white shadow sticky top-0">
           <div className="flex items-center gap-3">
             <span 
-              className="font-bold text-xl cursor-pointer hover:opacity-90" 
-              onClick={() => { setCurrentView('dashboard'); window.location.hash = ''; setActiveFormId(null); }}
+              className="font-bold text-xl cursor-pointer hover:opacity-90 transition-opacity" 
+              onClick={() => { 
+                setCurrentView('dashboard'); 
+                window.location.hash = ''; 
+                setActiveFormId(null); 
+              }}
             >
               Forms
             </span>
           </div>
           <div className="flex items-center gap-4">
-            <button onClick={() => setCurrentView('settings')} className="text-xs font-bold uppercase tracking-widest hover:opacity-80">Settings</button>
-            <button onClick={() => { setCurrentUser(null); setCurrentView('dashboard'); window.location.hash = ''; setActiveFormId(null); }} className="text-[10px] font-black uppercase bg-white/10 px-3 py-1.5 rounded hover:bg-white/20 transition-colors">Log Out</button>
+            <button onClick={() => setCurrentView('settings')} className="text-xs font-bold uppercase tracking-widest hover:opacity-80 transition-opacity">Settings</button>
+            <button 
+              onClick={() => { 
+                setCurrentUser(null); 
+                setCurrentView('dashboard'); 
+                window.location.hash = ''; 
+                setActiveFormId(null); 
+              }} 
+              className="text-[10px] font-black uppercase bg-white/10 px-3 py-1.5 rounded hover:bg-white/20 transition-colors"
+            >
+              Log Out
+            </button>
           </div>
         </header>
       )}
@@ -285,10 +322,19 @@ const App: React.FC = () => {
             />
           ) : (
             <div className="min-h-screen flex items-center justify-center p-6 bg-[#f3f2f1]">
-              <div className="bg-white p-12 rounded-xl shadow-xl text-center max-w-sm">
+              <div className="bg-white p-12 rounded-xl shadow-xl text-center max-w-sm animate-in fade-in zoom-in duration-300">
                 <h2 className="text-2xl font-black text-red-500 mb-2">Form Not Found</h2>
-                <p className="text-gray-500 text-sm mb-6">The form you are looking for doesn't exist or has been deleted.</p>
-                <button onClick={() => { window.location.hash = ''; setCurrentView('dashboard'); setActiveFormId(null); }} className="w-full bg-[#008272] text-white py-3 rounded font-bold uppercase text-xs tracking-widest">Return Home</button>
+                <p className="text-gray-500 text-sm mb-6">The form you are looking for doesn't exist or has been deleted by the owner.</p>
+                <button 
+                  onClick={() => { 
+                    window.location.hash = ''; 
+                    setCurrentView('dashboard'); 
+                    setActiveFormId(null); 
+                  }} 
+                  className="w-full bg-[#008272] text-white py-3 rounded font-bold uppercase text-xs tracking-widest hover:brightness-110 shadow-lg active:scale-95 transition-all"
+                >
+                  Return Home
+                </button>
               </div>
             </div>
           )
