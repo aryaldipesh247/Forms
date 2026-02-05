@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Form, View, FormResponse, User, ResponseArchive } from './types';
 import Dashboard from './components/Dashboard';
@@ -178,7 +177,7 @@ const App: React.FC = () => {
               className="font-bold text-xl cursor-pointer hover:opacity-90" 
               onClick={() => { setCurrentView('dashboard'); window.location.hash = ''; }}
             >
-              Form
+              Forms
             </span>
           </div>
           <div className="flex items-center gap-4">

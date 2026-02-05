@@ -209,7 +209,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
                <div className="w-6 h-6 bg-[#008272] flex items-center justify-center rounded-sm">
                   <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M19,3H5C3.89,3 3,3.89 3,5V19C3,20.11 3.89,21 5,21H19C20.11,21 21,20.11 21,19V5C21,3.89 20.11,3 19,3M19,19H5V5H19V19M17,17H7V15H17V17M17,13H7V11H17V13M17,9H7V7H17V9Z"/></svg>
                </div>
-               <span className="text-[10px] font-black uppercase tracking-widest text-[#008272]">Form</span>
+               <span className="text-[10px] font-black uppercase tracking-widest text-[#008272]">Forms</span>
             </div>
           )}
           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Public Response Form</span>
