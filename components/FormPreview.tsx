@@ -128,11 +128,12 @@ const DoubleBoxQuestion = ({ q, answers, onAnswer }: { q: Question, answers: any
 
 interface FormPreviewProps {
   form: Form;
+  isGuest?: boolean;
   onBack: () => void;
   onSubmit: (answers: Record<string, any>) => number;
 }
 
-const FormPreview: React.FC<FormPreviewProps> = ({ form, onBack, onSubmit }) => {
+const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubmit }) => {
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [submitted, setSubmitted] = useState(false);
   const [ticketNumber, setTicketNumber] = useState<number | null>(null);
@@ -181,7 +182,12 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, onBack, onSubmit }) => 
             <p className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-400 mb-3">Serial</p>
             <p className="text-5xl font-black">#{ticketNumber}</p>
           </div>
-          <button onClick={onBack} className="w-full py-4 text-white font-black uppercase rounded-lg shadow-lg" style={{ backgroundColor: theme.primaryColor }}>Close</button>
+          {!isGuest && (
+            <button onClick={onBack} className="w-full py-4 text-white font-black uppercase rounded-lg shadow-lg" style={{ backgroundColor: theme.primaryColor }}>Close</button>
+          )}
+          {isGuest && (
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">You can now close this tab.</p>
+          )}
         </div>
       </div>
     );
@@ -201,8 +207,17 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, onBack, onSubmit }) => 
       )}
 
       <nav className="bg-white/95 backdrop-blur-md sticky top-0 z-40 border-b p-4 shadow-sm flex justify-between items-center px-8">
-          <button onClick={onBack} className="text-[10px] font-black uppercase tracking-widest text-[#008272]">Back to Editor</button>
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Forms Pro Preview</span>
+          {!isGuest ? (
+            <button onClick={onBack} className="text-[10px] font-black uppercase tracking-widest text-[#008272]">Back to Editor</button>
+          ) : (
+            <div className="flex items-center gap-2">
+               <div className="w-6 h-6 bg-[#008272] flex items-center justify-center rounded-sm">
+                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M19,3H5C3.89,3 3,3.89 3,5V19C3,20.11 3.89,21 5,21H19C20.11,21 21,20.11 21,19V5C21,3.89 20.11,3 19,3M19,19H5V5H19V19M17,17H7V15H17V17M17,13H7V11H17V13M17,9H7V7H17V9Z"/></svg>
+               </div>
+               <span className="text-[10px] font-black uppercase tracking-widest text-[#008272]">Forms Pro</span>
+            </div>
+          )}
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Public Response Form</span>
       </nav>
 
       <div className="max-w-3xl mx-auto px-4 mt-12 space-y-8">

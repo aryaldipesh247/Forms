@@ -12,10 +12,20 @@ import Settings from './components/Settings';
 const USERS_STORAGE_KEY = 'forms_users_v11';
 
 const App: React.FC = () => {
+  // Initialize state based on hash to avoid login redirect on shared links
+  const getInitialView = (): { view: View; id: string | null } => {
+    const hash = window.location.hash;
+    if (hash.startsWith('#preview/')) {
+      return { view: 'preview', id: hash.replace('#preview/', '') };
+    }
+    return { view: 'dashboard', id: null };
+  };
+
+  const initial = getInitialView();
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [currentView, setCurrentView] = useState<View>('dashboard');
-  const [activeFormId, setActiveFormId] = useState<string | null>(null);
+  const [currentView, setCurrentView] = useState<View>(initial.view);
+  const [activeFormId, setActiveFormId] = useState<string | null>(initial.id);
 
   useEffect(() => {
     const saved = localStorage.getItem(USERS_STORAGE_KEY);
@@ -34,18 +44,29 @@ const App: React.FC = () => {
     }
     
     setUsers(currentUsers);
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(currentUsers));
+    
+    // If we are in preview mode, ensure we have the users loaded to find the form
+    if (currentView === 'preview' && activeFormId) {
+      const allForms = currentUsers.flatMap(u => u.forms);
+      const exists = allForms.some(f => f.id === activeFormId);
+      if (!exists) {
+        // If form doesn't exist, go to dashboard/auth
+        setCurrentView('dashboard');
+        setActiveFormId(null);
+      }
+    }
 
     const handleHash = () => {
       const hash = window.location.hash;
       if (hash.startsWith('#preview/')) {
         const id = hash.replace('#preview/', '');
-        const allForms = currentUsers.flatMap(u => u.forms);
-        const targetForm = allForms.find(f => f.id === id);
-        if (targetForm) { setActiveFormId(id); setCurrentView('preview'); }
+        setActiveFormId(id); 
+        setCurrentView('preview');
+      } else if (hash === '' || hash === '#') {
+        if (!currentUser) setCurrentView('dashboard');
       }
     };
-    handleHash();
+
     window.addEventListener('hashchange', handleHash);
     return () => window.removeEventListener('hashchange', handleHash);
   }, []);
@@ -120,10 +141,19 @@ const App: React.FC = () => {
     handleUpdateForms(updatedForms);
   };
 
+  // Find active form globally (so preview works for guests)
   const activeForm = users.flatMap(u => u.forms).find(f => f.id === activeFormId) || null;
 
+  // Crucial fix: Only show Auth if no user AND not in preview mode
   if (!currentUser && currentView !== 'preview') {
-    return <Auth onLogin={u => {setCurrentUser(u); setCurrentView('dashboard');}} users={users} onRegister={u => setUsers([...users, u])} onUpdateUser={handleUpdateUser} />;
+    return (
+      <Auth 
+        onLogin={u => { setCurrentUser(u); setCurrentView('dashboard'); window.location.hash = ''; }} 
+        users={users} 
+        onRegister={u => setUsers([...users, u])} 
+        onUpdateUser={handleUpdateUser} 
+      />
+    );
   }
 
   return (
@@ -135,7 +165,7 @@ const App: React.FC = () => {
           </div>
           <div className="flex items-center gap-4">
             <button onClick={() => setCurrentView('settings')} className="text-xs font-bold uppercase tracking-widest">Settings</button>
-            <button onClick={() => setCurrentUser(null)} className="text-[10px] font-black uppercase bg-white/10 px-3 py-1.5 rounded">Log Out</button>
+            <button onClick={() => { setCurrentUser(null); setCurrentView('dashboard'); window.location.hash = ''; }} className="text-[10px] font-black uppercase bg-white/10 px-3 py-1.5 rounded">Log Out</button>
           </div>
         </header>
       )}
@@ -156,22 +186,35 @@ const App: React.FC = () => {
         )}
         {currentView === 'editor' && activeForm && (
           <FormEditor 
-            form={activeForm} onBack={() => setCurrentView('dashboard')} onPreview={() => setCurrentView('preview')}
+            form={activeForm} onBack={() => { setCurrentView('dashboard'); window.location.hash = ''; }} onPreview={() => { setCurrentView('preview'); window.location.hash = `preview/${activeForm.id}`; }}
             onViewResponses={() => setCurrentView('responses')} onDelete={() => {}} 
             onUpdate={updated => handleUpdateForms(currentUser!.forms.map(f => f.id === updated.id ? updated : f))}
           />
         )}
         {currentView === 'preview' && activeForm && (
           <FormPreview 
-            form={activeForm} onBack={() => setCurrentView('editor')} 
+            form={activeForm} 
+            isGuest={!currentUser}
+            onBack={() => {
+              if (currentUser) {
+                setCurrentView('editor');
+                window.location.hash = '';
+              } else {
+                setCurrentView('dashboard'); // This will trigger Auth for guests
+              }
+            }} 
             onSubmit={answers => {
               const owner = users.find(u => u.forms.some(f => f.id === activeForm.id))!;
               let sn = 1;
               const uUser = { ...owner, forms: owner.forms.map(f => {
-                if (f.id === activeForm.id) { sn = f.responses.length + 1; return { ...f, responses: [...f.responses, { id: Math.random().toString(36).substr(2, 9), formId: f.id, timestamp: new Date().toISOString(), answers, serialNumber: sn }] }; }
+                if (f.id === activeForm.id) { 
+                  sn = f.responses.length + 1; 
+                  return { ...f, responses: [...f.responses, { id: Math.random().toString(36).substr(2, 9), formId: f.id, timestamp: new Date().toISOString(), answers, serialNumber: sn }] }; 
+                }
                 return f;
               })};
-              handleUpdateUser(uUser); return sn;
+              handleUpdateUser(uUser); 
+              return sn;
             }}
           />
         )}
