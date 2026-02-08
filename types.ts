@@ -96,6 +96,7 @@ export interface Form {
   theme?: FormTheme;
   titleFormatting?: TextFormat;
   titlePosition?: { x: number; y: number };
+  isPublished?: boolean;
 }
 
 export interface User {

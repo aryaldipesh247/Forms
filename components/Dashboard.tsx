@@ -55,10 +55,15 @@ const Dashboard: React.FC<DashboardProps> = ({ forms, onCreate, onSelect, onDele
                  <div className="w-8 h-8 rounded bg-teal-50 flex items-center justify-center">
                     <svg className="w-5 h-5 text-[#008272]" fill="currentColor" viewBox="0 0 24 24"><path d="M19,3H5C3.89,3 3,3.89 3,5V19C3,20.11 3.89,21 5,21H19C20.11,21 21,20.11 21,19V5C21,3.89 20.11,3 19,3M19,19H5V5H19V19M17,17H7V15H17V17M17,13H7V11H17V13M17,9H7V7H17V9Z"/></svg>
                  </div>
-                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                 <div className="flex gap-1 items-center">
+                    {form.isPublished ? (
+                      <span className="text-[8px] bg-green-50 text-green-600 px-1.5 py-0.5 rounded-full font-black uppercase tracking-widest border border-green-100">Live</span>
+                    ) : (
+                      <span className="text-[8px] bg-gray-50 text-gray-400 px-1.5 py-0.5 rounded-full font-black uppercase tracking-widest border border-gray-100">Draft</span>
+                    )}
                     <button 
                       onClick={(e) => { e.stopPropagation(); onDuplicate(form); }}
-                      className="p-1.5 bg-white shadow-sm border rounded hover:bg-gray-50 text-[#605e5c]"
+                      className="p-1.5 bg-white shadow-sm border rounded hover:bg-gray-50 text-[#605e5c] opacity-0 group-hover:opacity-100 transition-opacity"
                       title="Duplicate"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>

@@ -7,7 +7,7 @@ export const generateQuestionsFromAI = async (topic: string) => {
   const response = await ai.models.generateContent({
     model: 'gemini-3-pro-preview',
     contents: `Generate a list of 5-7 high-quality survey questions about: "${topic}". 
-               Include a variety of types: CHOICE, TEXT, RATING, DATE.
+               Include a variety of types: CHOICE, TEXT, DATE.
                For CHOICE, provide 3-5 sensible options.
                Return a structured JSON array.`,
     config: {
@@ -75,7 +75,6 @@ export const suggestThemeFromAI = async (title: string, description: string): Pr
 
   try {
     const res = JSON.parse(response.text || "{}");
-    const keyword = res.bgKeyword || 'professional';
     return {
       primaryColor: res.primaryColor || '#008272',
       backgroundColor: '#f3f2f1',
@@ -83,6 +82,31 @@ export const suggestThemeFromAI = async (title: string, description: string): Pr
     };
   } catch (e) {
     return { primaryColor: '#008272' };
+  }
+};
+
+export const generateBackgroundImageAI = async (prompt: string): Promise<string | null> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: [{ parts: [{ text: `Create a professional, high-quality, abstract or minimalist background suitable for a professional survey form. Theme: ${prompt}. Ensure the image is clean and not too distracting for text overlay.` }] }],
+      config: {
+        imageConfig: {
+          aspectRatio: "16:9"
+        }
+      }
+    });
+
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      if (part.inlineData) {
+        return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+      }
+    }
+    return null;
+  } catch (e) {
+    console.error("Image generation failed", e);
+    return null;
   }
 };
 

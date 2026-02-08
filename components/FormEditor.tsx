@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Form, Question, QuestionType, TextFormat, FormDescription, FormTheme } from '../types';
 import QuestionCard from './QuestionCard';
@@ -67,6 +66,10 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
   const logoFileRef = useRef<HTMLInputElement>(null);
 
   const updateForm = (updates: Partial<Form>) => onUpdate({ ...form, ...updates });
+
+  const togglePublish = () => {
+    updateForm({ isPublished: !form.isPublished });
+  };
 
   const handleGenerateAI = async () => {
     if (!aiPrompt) return;
@@ -179,7 +182,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
         </video>
       )}
 
-      {showShare && <ShareDialog formId={form.id} onClose={() => setShowShare(false)} />}
+      {showShare && <ShareDialog formId={form.id} isPublished={form.isPublished} onClose={() => setShowShare(false)} />}
       
       <nav className="bg-white/95 backdrop-blur-md border-b sticky top-0 z-[60] px-6 h-12 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-4">
@@ -199,6 +202,16 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
           </button>
           <button onClick={() => { setShowThemePane(!showThemePane); setShowAIPane(false); }} className="px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:bg-gray-50">Style</button>
           <button onClick={onPreview} className="text-[#008272] px-3 py-1.5 rounded font-bold text-[10px] uppercase tracking-widest hover:bg-gray-50">Preview</button>
+          
+          <div className="h-6 w-px bg-gray-200 mx-1" />
+          
+          <button 
+            onClick={togglePublish} 
+            className={`px-3 py-1.5 rounded-sm text-[10px] font-bold uppercase tracking-widest transition-all ${form.isPublished ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}
+          >
+            {form.isPublished ? 'Unpublish' : 'Publish'}
+          </button>
+
           <button onClick={() => setShowShare(true)} className="bg-[#008272] text-white px-4 py-1.5 rounded-sm text-[10px] font-bold uppercase tracking-widest" style={{ backgroundColor: theme.primaryColor }}>Collect responses</button>
         </div>
       </nav>

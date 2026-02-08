@@ -1,95 +1,110 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 
 interface ShareDialogProps {
   formId: string;
+  isPublished?: boolean;
   onClose: () => void;
 }
 
-const ShareDialog: React.FC<ShareDialogProps> = ({ formId, onClose }) => {
-  // Ensure the pathname includes a trailing slash if needed before the hash
-  const pathname = window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname + '/';
-  const shareUrl = `${window.location.origin}${window.location.pathname}#preview/${formId}`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(shareUrl)}`;
+const ShareDialog: React.FC<ShareDialogProps> = ({ formId, isPublished, onClose }) => {
+  const [copied, setCopied] = useState(false);
+  
+  // Robust URL generation for single-page hash routing
+  const shareUrl = useMemo(() => {
+    const base = window.location.origin + window.location.pathname;
+    const cleanBase = base.endsWith('/') ? base : base + '/';
+    return `${cleanBase}#preview/${formId}`;
+  }, [formId]);
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(shareUrl);
-    alert('Form link copied to clipboard!');
-  };
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(shareUrl)}&bgcolor=ffffff&color=008272`;
 
-  const shareWhatsApp = () => {
-    window.open(`https://wa.me/?text=${encodeURIComponent('Please take a moment to fill out this form: ' + shareUrl)}`, '_blank');
-  };
-
-  const shareEmail = () => {
-    window.location.href = `mailto:?subject=Survey Request: Form Submission&body=${encodeURIComponent('Hi, \n\nPlease fill out this form at your earliest convenience: ' + shareUrl)}`;
-  };
+  const copyToClipboard = useCallback(async () => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        // Fallback for non-secure contexts
+        const textArea = document.createElement("textarea");
+        textArea.value = shareUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Copy failed", err);
+    }
+  }, [shareUrl]);
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300">
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-8 text-black border border-gray-100 scale-100 overflow-hidden relative">
-        <div className="flex justify-between items-start mb-6">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-xl flex items-center justify-center z-[200] p-6 animate-in fade-in duration-200" onClick={onClose}>
+      <div 
+        className="bg-white rounded-[2rem] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)] max-w-md w-full p-10 text-black border border-white/20 relative overflow-hidden animate-in zoom-in duration-300"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-start mb-10">
           <div>
-            <h2 className="text-3xl font-black text-[#008272] tracking-tight">Collect responses</h2>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Anyone with the link can respond</p>
+            <h2 className="text-4xl font-black text-[#008272] tracking-tighter leading-none mb-2">Share Link</h2>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Deploy to respondents</p>
           </div>
-          <button onClick={onClose} className="text-gray-300 hover:text-red-500 text-3xl transition-colors leading-none">&times;</button>
+          <button onClick={onClose} className="text-gray-300 hover:text-red-500 text-4xl transition-colors leading-none">&times;</button>
         </div>
 
-        <div className="flex flex-col items-center mb-8 bg-[#faf9f8] p-8 rounded-xl border border-dashed border-[#edebe9]">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 mb-6 hover:scale-105 transition-transform">
-            <img src={qrUrl} alt="Form QR Code" className="w-40 h-40 object-contain" />
+        {!isPublished && (
+          <div className="mb-10 p-5 bg-amber-50 border-l-4 border-amber-400 rounded-r-2xl flex gap-4 animate-pulse">
+             <span className="text-2xl">⚠️</span>
+             <div>
+               <p className="text-[10px] font-black uppercase text-amber-700 tracking-wider">Draft Mode Active</p>
+               <p className="text-[10px] text-amber-600 mt-1 font-bold">Respondents cannot submit until you click "Publish" in the main editor.</p>
+             </div>
           </div>
-          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#008272]">Scan to open form</p>
+        )}
+
+        <div className="flex flex-col items-center mb-10 bg-[#faf9f8] p-10 rounded-[2rem] border-2 border-dashed border-[#edebe9] group transition-all">
+          <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-100 mb-6 group-hover:scale-105 transition-transform duration-300 relative overflow-hidden">
+            <img 
+              src={qrUrl} 
+              alt="QR Code" 
+              className="w-48 h-48 object-contain" 
+              loading="lazy"
+              onError={(e) => {
+                e.currentTarget.src = 'https://via.placeholder.com/200?text=QR+Error';
+              }}
+            />
+          </div>
+          <p className="text-[11px] font-black uppercase tracking-[0.5em] text-[#008272]">Scan for instant access</p>
         </div>
 
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Form Link</label>
-            <div className="flex gap-2">
-              <input 
-                readOnly 
-                value={shareUrl} 
-                className="flex-1 p-3.5 border border-gray-200 rounded-lg text-xs bg-gray-50/50 focus:outline-none font-medium truncate" 
-              />
+        <div className="space-y-8">
+          <div className="space-y-3">
+            <label className="text-[10px] font-black uppercase text-gray-400 tracking-[0.4em] ml-1">Universal Link</label>
+            <div className="flex gap-3">
+              <input readOnly value={shareUrl} className="flex-1 p-4 bg-gray-50 border-2 border-[#edebe9] rounded-2xl text-xs font-black truncate focus:outline-none focus:border-[#008272] transition-colors" />
               <button 
-                onClick={copyToClipboard}
-                className="bg-[#008272] text-white px-8 rounded-lg text-[11px] font-black uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-md"
+                onClick={copyToClipboard} 
+                className={`px-8 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl active:scale-95 ${copied ? 'bg-green-600 text-white' : 'bg-[#008272] text-white hover:brightness-110'}`}
               >
-                Copy
+                {copied ? 'Copied!' : 'Copy'}
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 pt-2">
-            <button 
-              onClick={shareWhatsApp}
-              className="flex flex-col items-center justify-center gap-3 p-4 border border-gray-100 rounded-2xl hover:bg-green-50/50 hover:border-green-100 transition-all group aspect-square"
-            >
-              <div className="text-3xl filter grayscale group-hover:grayscale-0 transition-all">📟</div>
-              <span className="text-[9px] font-black uppercase tracking-[0.1em] text-gray-400 group-hover:text-green-600">WhatsApp</span>
-            </button>
-            <button 
-              onClick={shareEmail}
-              className="flex flex-col items-center justify-center gap-3 p-4 border border-gray-100 rounded-2xl hover:bg-blue-50/50 hover:border-blue-100 transition-all group aspect-square"
-            >
-              <div className="text-3xl filter grayscale group-hover:grayscale-0 transition-all">✉️</div>
-              <span className="text-[9px] font-black uppercase tracking-[0.1em] text-gray-400 group-hover:text-blue-600 text-center leading-tight">Email</span>
-            </button>
-            <button 
-              className="flex flex-col items-center justify-center gap-3 p-4 border border-gray-100 rounded-2xl aspect-square bg-gray-50/30 opacity-60 cursor-not-allowed group"
-            >
-              <div className="text-3xl filter grayscale opacity-50">🗨️</div>
-              <span className="text-[9px] font-black uppercase tracking-[0.1em] text-gray-400">Teams</span>
-            </button>
+          <div className="grid grid-cols-2 gap-4">
+             <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent('Please fill this form: ' + shareUrl)}`, '_blank')} className="flex items-center justify-center gap-3 p-4 bg-green-50 text-green-700 border-2 border-green-100 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-green-100 transition-all shadow-sm">WhatsApp</button>
+             <button onClick={() => window.location.href = `mailto:?subject=Survey Request&body=${encodeURIComponent('Please complete this form: ' + shareUrl)}`} className="flex items-center justify-center gap-3 p-4 bg-blue-50 text-blue-700 border-2 border-blue-100 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-all shadow-sm">Email Link</button>
           </div>
         </div>
         
-        <div className="mt-12 pt-6 border-t border-gray-100 text-center">
-          <p className="text-[10px] font-bold text-gray-300 uppercase tracking-[0.3em]">Designed by AjD Group Of Company</p>
+        <div className="mt-12 pt-8 border-t border-gray-50 text-center">
+          <p className="text-[10px] font-black text-gray-200 uppercase tracking-[0.6em]">Secure Protocol | AjD Group</p>
         </div>
       </div>
     </div>
   );
 };
+
+import { useMemo } from 'react';
 
 export default ShareDialog;
