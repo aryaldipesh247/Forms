@@ -16,7 +16,7 @@ const Dashboard: React.FC<DashboardProps> = ({ forms, onCreate, onSelect, onDele
     <div className="max-w-7xl mx-auto px-6 py-10">
       <div className="mb-10 p-10 bg-gradient-to-br from-[#008272] to-[#005a4e] rounded-md text-white shadow-lg relative overflow-hidden">
         <div className="relative z-10 max-w-2xl">
-           <h1 className="text-4xl font-black mb-2 tracking-tight">Welcome to Forms</h1>
+           <h1 className="text-4xl font-black mb-2 tracking-tight">Welcome to Forms PRO</h1>
            <p className="text-lg opacity-90 font-medium">Create engaging surveys and quizzes with intelligent AI tools and professional themes.</p>
            <div className="flex gap-4 mt-8">
               <button 

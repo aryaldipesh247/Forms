@@ -7,8 +7,7 @@ import ResponseDashboard from './components/ResponseDashboard';
 import RecycleBin from './components/RecycleBin';
 import Auth from './components/Auth';
 import Settings from './components/Settings';
-
-const USERS_STORAGE_KEY = 'forms_pro_cloud_sync_v1';
+import { saveDatabase, loadDatabase } from './services/databaseService';
 
 const App: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -16,8 +15,8 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [activeFormId, setActiveFormId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
 
-  // Optimized hash handler - runs once on mount and then on events
   const handleHashChange = useCallback(() => {
     const hash = window.location.hash;
     if (hash.startsWith('#preview/')) {
@@ -25,67 +24,61 @@ const App: React.FC = () => {
       setActiveFormId(id);
       setCurrentView('preview');
     } else if (currentView === 'preview') {
-      setCurrentView(currentUser ? 'dashboard' : 'dashboard');
+      setCurrentView('dashboard');
     }
-  }, [currentUser, currentView]);
+  }, [currentView]);
 
   useEffect(() => {
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [handleHashChange]);
 
-  // Initial data load - single source of truth
+  // Initial data load from Cloudinary/Local
   useEffect(() => {
-    const loadInitialData = () => {
-      const saved = localStorage.getItem(USERS_STORAGE_KEY);
-      let loadedUsers: User[] = [];
-      const adminUser: User = {
-        id: 'admin-access-jungdai',
-        email: 'Jungdai@1', password: 'Jungdai@1', pin: '1111', firstName: 'Admin', lastName: 'Jung', forms: []
-      };
-
-      try {
-        if (saved) {
-          loadedUsers = JSON.parse(saved);
-        }
-        if (!loadedUsers.find(u => u.email === adminUser.email)) {
-          loadedUsers.push(adminUser);
-        }
-      } catch (e) {
-        loadedUsers = [adminUser];
+    const init = async () => {
+      const loadedUsers = await loadDatabase();
+      const adminEmail = 'Jungdai@1';
+      
+      if (!loadedUsers.find(u => u.email === adminEmail)) {
+        loadedUsers.push({
+          id: 'admin-access-jungdai',
+          email: adminEmail,
+          password: 'Jungdai@1',
+          pin: '1111',
+          firstName: 'Admin',
+          lastName: 'Jung',
+          forms: []
+        });
       }
 
       setUsers(loadedUsers);
       setIsLoading(false);
 
-      // Trigger initial hash check after users are loaded
       const hash = window.location.hash;
       if (hash.startsWith('#preview/')) {
         setActiveFormId(hash.replace('#preview/', ''));
         setCurrentView('preview');
       }
     };
-    loadInitialData();
+    init();
   }, []);
 
-  // Efficient persistence - only save when users actually change
+  // Sync to Cloudinary whenever users change
   useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+    if (!isLoading && users.length > 0) {
+      const sync = async () => {
+        setIsSyncing(true);
+        await saveDatabase(users);
+        setIsSyncing(false);
+      };
+      sync();
     }
   }, [users, isLoading]);
 
-  // High-performance form lookup
   const activeForm = useMemo(() => {
     if (!activeFormId || users.length === 0) return null;
-    // Fast path: check current user
-    if (currentUser) {
-      const f = currentUser.forms.find(f => f.id === activeFormId);
-      if (f) return f;
-    }
-    // Global path: check all users
     return users.flatMap(u => u.forms).find(f => f.id === activeFormId) || null;
-  }, [users, currentUser, activeFormId]);
+  }, [users, activeFormId]);
 
   const handleUpdateUser = useCallback((updatedUser: User) => {
     setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
@@ -99,7 +92,14 @@ const App: React.FC = () => {
     handleUpdateUser({ ...currentUser, forms: updatedForms });
   }, [currentUser, handleUpdateUser]);
 
-  if (isLoading) return null;
+  if (isLoading) return (
+    <div className="min-h-screen bg-[#f3f2f1] flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-12 h-12 border-4 border-[#008272] border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#008272]">Initializing Forms PRO Engine...</p>
+      </div>
+    </div>
+  );
 
   const isDirectPreview = window.location.hash.startsWith('#preview/');
   const shouldShowAuth = !currentUser && currentView !== 'preview' && !isDirectPreview;
@@ -120,7 +120,13 @@ const App: React.FC = () => {
       {currentView !== 'preview' && (
         <header className="bg-[#008272] px-6 h-12 flex justify-between items-center z-[100] text-white shadow-sm sticky top-0 transition-all">
           <div className="flex items-center gap-3">
-            <span className="font-bold text-lg cursor-pointer hover:opacity-80 transition-opacity" onClick={() => { setCurrentView('dashboard'); window.location.hash = ''; setActiveFormId(null); }}>Forms Pro</span>
+            <span className="font-bold text-lg cursor-pointer hover:opacity-80 transition-opacity" onClick={() => { setCurrentView('dashboard'); window.location.hash = ''; setActiveFormId(null); }}>Forms PRO</span>
+            {isSyncing && (
+              <div className="flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full animate-pulse">
+                <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                <span className="text-[8px] font-black uppercase tracking-widest">Syncing to Cloudinary</span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-6">
             <button onClick={() => setCurrentView('settings')} className="text-[10px] font-black uppercase tracking-[0.2em] hover:opacity-70 transition-opacity">Settings</button>

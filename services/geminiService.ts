@@ -1,6 +1,6 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { QuestionType, FormTheme, Form } from "../types";
+import { uploadImageToCloudinary } from "./cloudinaryService";
 
 export const generateQuestionsFromAI = async (topic: string) => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -100,7 +100,9 @@ export const generateBackgroundImageAI = async (prompt: string): Promise<string 
 
     for (const part of response.candidates?.[0]?.content?.parts || []) {
       if (part.inlineData) {
-        return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+        const base64 = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+        // Upload AI generated base64 to Cloudinary to keep form metadata small
+        return await uploadImageToCloudinary(base64);
       }
     }
     return null;

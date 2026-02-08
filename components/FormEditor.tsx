@@ -4,6 +4,7 @@ import QuestionCard from './QuestionCard';
 import ShareDialog from './ShareDialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateQuestionsFromAI, suggestThemeFromAI } from '../services/geminiService';
+import { uploadImageToCloudinary } from '../services/cloudinaryService';
 
 interface FormEditorProps {
   form: Form;
@@ -27,7 +28,6 @@ const THEME_PRESETS = [
   { id: 'serene', color: '#0078d4', bg: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2000&auto=format&fit=crop', label: 'Beach' },
   { id: 'sunset', color: '#ea4300', bg: 'https://images.unsplash.com/photo-1513002749550-c59d786b8e6c?q=80&w=2000&auto=format&fit=crop', label: 'Skyline' },
   { id: 'midnight', color: '#252423', bg: 'https://images.unsplash.com/photo-1475274047050-1d0c0975c63e?q=80&w=2000&auto=format&fit=crop', label: 'Midnight' },
-  // New Themes Added
   { id: 'ocean', color: '#005175', bg: 'https://images.unsplash.com/photo-1551244072-5d12893278ab?q=80&w=2000&auto=format&fit=crop', label: 'Ocean' },
   { id: 'forest', color: '#2d4a22', bg: 'https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=2000&auto=format&fit=crop', label: 'Deep Forest' },
   { id: 'autumn', color: '#8b4513', bg: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=2000&auto=format&fit=crop', label: 'Autumn' },
@@ -59,6 +59,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
   const [showAIPane, setShowAIPane] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [activeBlock, setActiveBlock] = useState<string | null>(null);
   
   const theme = form.theme || { primaryColor: '#008272', backgroundColor: '#f3f2f1' };
@@ -102,19 +103,23 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
     updateForm({ questions: newQuestions });
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'header' | 'logo') => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'header' | 'logo') => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const url = reader.result as string;
+      setIsUploadingMedia(true);
+      try {
+        const url = await uploadImageToCloudinary(file);
         if (type === 'header') {
           updateForm({ theme: { ...theme, headerBackgroundImage: url, headerBackgroundVideoUrl: undefined } });
         } else {
           updateForm({ theme: { ...theme, logoUrl: url, logoAlignment: theme.logoAlignment || 'left', logoScale: theme.logoScale || 100 } });
         }
-      };
-      reader.readAsDataURL(file);
+      } catch (error) {
+        console.error('Upload failed:', error);
+        alert('Failed to upload image to Cloudinary.');
+      } finally {
+        setIsUploadingMedia(false);
+      }
     }
   };
 
@@ -280,17 +285,19 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
                <div className="space-y-4">
                   <button 
                     onClick={() => headerFileRef.current?.click()}
-                    className="w-full p-3 border-2 border-dashed rounded text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 text-[#008272]"
+                    disabled={isUploadingMedia}
+                    className="w-full p-3 border-2 border-dashed rounded text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 text-[#008272] disabled:opacity-50"
                   >
-                    Upload Header Background
+                    {isUploadingMedia ? 'Uploading to Cloudinary...' : 'Upload Header Background'}
                   </button>
                   <input ref={headerFileRef} type="file" className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'header')} />
                   
                   <button 
                     onClick={() => logoFileRef.current?.click()}
-                    className="w-full p-3 border-2 border-dashed rounded text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 text-[#008272]"
+                    disabled={isUploadingMedia}
+                    className="w-full p-3 border-2 border-dashed rounded text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 text-[#008272] disabled:opacity-50"
                   >
-                    Upload Logo
+                    {isUploadingMedia ? 'Uploading to Cloudinary...' : 'Upload Logo'}
                   </button>
                   <input ref={logoFileRef} type="file" className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'logo')} />
                </div>

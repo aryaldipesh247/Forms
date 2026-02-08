@@ -1,27 +1,38 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Form, QuestionType, Question } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
+import { uploadImageToCloudinary } from '../services/cloudinaryService';
 
 const ImageUploadQuestion = ({ q, value, onAnswer }: { q: Question, value: any, onAnswer: (v: any) => void }) => {
   const [preview, setPreview] = useState<string | null>(value || null);
+  const [isUploading, setIsUploading] = useState(false);
   
-  const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const url = reader.result as string;
+      setIsUploading(true);
+      try {
+        const url = await uploadImageToCloudinary(file);
         setPreview(url);
         onAnswer(url);
-      };
-      reader.readAsDataURL(file);
+      } catch (error) {
+        console.error('Respondent upload failed:', error);
+        alert('Failed to upload image. Please try again.');
+      } finally {
+        setIsUploading(false);
+      }
     }
   }, [onAnswer]);
 
   return (
     <div className="space-y-4">
       <AnimatePresence mode="wait">
-        {preview ? (
+        {isUploading ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-40 bg-gray-50 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-3">
+             <div className="w-8 h-8 border-2 border-[#008272] border-t-transparent rounded-full animate-spin"></div>
+             <p className="text-[10px] font-black uppercase text-[#008272] tracking-widest">Uploading to Cloudinary...</p>
+          </motion.div>
+        ) : preview ? (
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="relative group">
             <img src={preview} className="w-full rounded-xl shadow-lg border-2 border-white object-cover max-h-[300px]" alt="Preview" />
             <button onClick={() => { setPreview(null); onAnswer(null); }} className="absolute top-3 right-3 bg-black/60 hover:bg-black text-white w-8 h-8 rounded-full flex items-center justify-center transition-colors shadow-lg">✕</button>
@@ -89,7 +100,6 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
 
   const handleSubmit = useCallback(async () => {
     setIsSubmitting(true);
-    // Artifical delay for perceived security/completeness
     await new Promise(r => setTimeout(r, 600));
     const s = onSubmit(answers);
     setTicketNumber(s);
@@ -103,8 +113,17 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
       <div className="min-h-screen flex items-center justify-center bg-[#f3f2f1] p-6 animate-in fade-in duration-300">
         <div className="bg-white p-12 rounded-2xl shadow-2xl text-center max-w-sm border border-gray-100">
           <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-inner">⚠️</div>
-          <h2 className="text-3xl font-black text-[#323130] mb-3 tracking-tighter">Link Invalid</h2>
-          <p className="text-gray-400 text-sm font-bold mb-10 leading-relaxed uppercase tracking-widest">This form has been moved or the shared URL is incorrect.</p>
+          <h2 className="text-3xl font-black text-[#323130] mb-3 tracking-tighter">Form Not Found</h2>
+          <div className="text-left space-y-4 mb-8">
+            <p className="text-gray-500 text-sm font-bold uppercase tracking-widest leading-relaxed">
+              Why am I seeing this?
+            </p>
+            <ul className="text-xs text-gray-400 space-y-2 list-disc pl-4 font-medium">
+              <li>You may be accessing this from a <strong>different device</strong> or browser. In this demo, data stays on the device it was created.</li>
+              <li>The form may have been moved or deleted by the owner.</li>
+              <li>The shared link might be incomplete.</li>
+            </ul>
+          </div>
           <button onClick={onBack} className="w-full bg-[#008272] text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-[0.3em] shadow-xl hover:brightness-110 active:scale-95 transition-all">Go Home</button>
         </div>
       </div>
