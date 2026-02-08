@@ -6,7 +6,7 @@ import FormEditor from './components/FormEditor';
 import FormPreview from './components/FormPreview';
 import ResponseDashboard from './components/ResponseDashboard';
 import RecycleBin from './components/RecycleBin';
-import Auth from './components/Auth';
+import Auth, { hashPassword } from './components/Auth';
 import Settings from './components/Settings';
 import { saveDatabase, loadDatabase } from './services/databaseService';
 
@@ -18,31 +18,49 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Check for Public Preview Route
   const handleHashChange = useCallback(() => {
     const hash = window.location.hash;
     if (hash.startsWith('#preview/')) {
       const id = hash.replace('#preview/', '');
       setActiveFormId(id);
       setCurrentView('preview');
-    } else if (currentView === 'preview' && !window.location.hash.startsWith('#preview/')) {
-      setCurrentView(currentUser ? 'dashboard' : 'dashboard');
+    } else if (currentView === 'preview') {
+      setCurrentView('dashboard');
     }
-  }, [currentView, currentUser]);
+  }, [currentView]);
 
   useEffect(() => {
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [handleHashChange]);
 
-  // Initial data load - Mandatory Cloud Sync for multi-device
+  // Initial data load from Cloudinary/Local
   useEffect(() => {
     const init = async () => {
       const loadedUsers = await loadDatabase();
+      const adminEmail = 'Jungdai@1';
+      const adminSecret = 'Jungdai@1';
+      const adminPin = '1111';
+      
+      // Ensure admin exists with hashed credentials that match Auth login logic
+      if (!loadedUsers.find(u => u.email === adminEmail)) {
+        const hashedPassword = await hashPassword(adminSecret);
+        const hashedPin = await hashPassword(adminPin);
+        
+        loadedUsers.push({
+          id: 'admin-access-jungdai',
+          email: adminEmail,
+          password: hashedPassword,
+          pin: hashedPin,
+          firstName: 'Admin',
+          lastName: 'Jung',
+          forms: []
+        });
+      }
+
       setUsers(loadedUsers);
       setIsLoading(false);
 
-      // Trigger routing check after load
       const hash = window.location.hash;
       if (hash.startsWith('#preview/')) {
         setActiveFormId(hash.replace('#preview/', ''));
@@ -52,7 +70,7 @@ const App: React.FC = () => {
     init();
   }, []);
 
-  // Global Sync Observer
+  // Sync to Cloudinary whenever users change
   useEffect(() => {
     if (!isLoading && users.length > 0) {
       const sync = async () => {
@@ -60,15 +78,12 @@ const App: React.FC = () => {
         await saveDatabase(users);
         setIsSyncing(false);
       };
-      // Debounce sync slightly to avoid hitting Cloudinary too hard during rapid edits
-      const timer = setTimeout(sync, 1000);
-      return () => clearTimeout(timer);
+      sync();
     }
   }, [users, isLoading]);
 
   const activeForm = useMemo(() => {
     if (!activeFormId || users.length === 0) return null;
-    // Find form across ALL users to support public links
     return users.flatMap(u => u.forms).find(f => f.id === activeFormId) || null;
   }, [users, activeFormId]);
 
@@ -88,42 +103,41 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-[#f3f2f1] flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
         <div className="w-12 h-12 border-4 border-[#008272] border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#008272]">Loading Cloud Registry...</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#008272]">Initializing Forms PRO Engine...</p>
       </div>
     </div>
   );
 
-  const isPublicPreview = window.location.hash.startsWith('#preview/');
-  const shouldShowAuth = !currentUser && !isPublicPreview;
+  const isDirectPreview = window.location.hash.startsWith('#preview/');
+  const shouldShowAuth = !currentUser && currentView !== 'preview' && !isDirectPreview;
 
   if (shouldShowAuth) {
     return (
       <Auth 
-        onLogin={u => { setCurrentUser(u); setCurrentView('dashboard'); }} 
+        onLogin={u => { setCurrentUser(u); setCurrentView('dashboard'); window.location.hash = ''; }} 
         users={users} 
-        onRegister={u => { setUsers(prev => [...prev, u]); setCurrentUser(u); }} 
+        onRegister={u => { setUsers(prev => [...prev, u]); setCurrentUser(u); setCurrentView('dashboard'); }} 
         onUpdateUser={handleUpdateUser} 
       />
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col antialiased" style={{ backgroundColor: currentView === 'preview' ? activeForm?.theme?.backgroundColor || '#f3f2f1' : '#f3f2f1' }}>
+    <div className="min-h-screen flex flex-col antialiased selection:bg-[#008272]/20" style={{ backgroundColor: currentView === 'preview' ? activeForm?.theme?.backgroundColor || '#f3f2f1' : '#f3f2f1' }}>
       {currentView !== 'preview' && (
         <header className="bg-[#008272] px-6 h-12 flex justify-between items-center z-[100] text-white shadow-sm sticky top-0 transition-all">
           <div className="flex items-center gap-3">
-            <span className="font-bold text-lg cursor-pointer" onClick={() => { setCurrentView('dashboard'); window.location.hash = ''; }}>Forms PRO</span>
+            <span className="font-bold text-lg cursor-pointer hover:opacity-80 transition-opacity" onClick={() => { setCurrentView('dashboard'); window.location.hash = ''; setActiveFormId(null); }}>Forms PRO</span>
             {isSyncing && (
-              <div className="flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full">
-                <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
-                <span className="text-[8px] font-black uppercase tracking-widest">Global Sync</span>
+              <div className="flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full animate-pulse">
+                <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                <span className="text-[8px] font-black uppercase tracking-widest">Syncing to Cloudinary</span>
               </div>
             )}
           </div>
           <div className="flex items-center gap-6">
-            <span className="text-[10px] font-bold opacity-60 truncate max-w-[100px] hidden md:block">{currentUser?.email}</span>
-            <button onClick={() => setCurrentView('settings')} className="text-[10px] font-black uppercase tracking-[0.2em] hover:opacity-70">Settings</button>
-            <button onClick={() => { setCurrentUser(null); window.location.hash = ''; }} className="text-[10px] font-black uppercase bg-white/10 px-3 py-1.5 rounded hover:bg-white/20">Log Out</button>
+            <button onClick={() => setCurrentView('settings')} className="text-[10px] font-black uppercase tracking-[0.2em] hover:opacity-70 transition-opacity">Settings</button>
+            <button onClick={() => { setCurrentUser(null); setCurrentView('dashboard'); window.location.hash = ''; setActiveFormId(null); }} className="text-[10px] font-black uppercase bg-white/10 px-3 py-1.5 rounded hover:bg-white/20 transition-all">Sign Out</button>
           </div>
         </header>
       )}
@@ -149,8 +163,8 @@ const App: React.FC = () => {
         {currentView === 'editor' && activeForm && (
           <FormEditor 
             form={activeForm} 
-            onBack={() => { setCurrentView('dashboard'); window.location.hash = ''; }} 
-            onPreview={() => { window.location.hash = `#preview/${activeForm.id}`; }}
+            onBack={() => { setCurrentView('dashboard'); window.location.hash = ''; setActiveFormId(null); }} 
+            onPreview={() => { window.location.hash = `preview/${activeForm.id}`; setCurrentView('preview'); }}
             onViewResponses={() => setCurrentView('responses')} 
             onDelete={() => { if (confirm('Move to Recycle Bin?')) { handleUpdateForms(currentUser!.forms.map(f => f.id === activeForm.id ? {...f, deletedAt: new Date().toISOString()} : f)); setCurrentView('dashboard'); } }} 
             onUpdate={updated => handleUpdateForms(currentUser!.forms.map(f => f.id === updated.id ? updated : f))}
@@ -161,12 +175,10 @@ const App: React.FC = () => {
           <FormPreview 
             form={activeForm} 
             isGuest={!currentUser}
-            onBack={() => { if (currentUser) { setCurrentView('editor'); window.location.hash = ''; } else { window.location.hash = ''; } }} 
+            onBack={() => { if (currentUser) { setCurrentView('editor'); window.location.hash = ''; } else { window.location.hash = ''; setCurrentView('dashboard'); } }} 
             onSubmit={answers => {
-              // Crucial: Find the form owner from the global users list
-              const owner = users.find(u => u.forms.some(f => f.id === activeFormId));
+              const owner = users.find(u => u.forms.some(f => f.id === activeFormId)) || currentUser;
               if (!owner) return 0;
-              
               let sn = 1;
               const updatedForms = owner.forms.map(f => {
                 if (f.id === activeFormId) { 
@@ -175,7 +187,6 @@ const App: React.FC = () => {
                 }
                 return f;
               });
-              
               handleUpdateUser({ ...owner, forms: updatedForms }); 
               return sn;
             }}
@@ -183,35 +194,21 @@ const App: React.FC = () => {
         )}
 
         {currentView === 'responses' && activeForm && (
-          <ResponseDashboard 
-            form={activeForm} 
-            onBack={() => setCurrentView('editor')} 
-            onArchiveResponses={() => {
-              if (!currentUser) return;
-              const archive: ResponseArchive = { id: Math.random().toString(36).substr(2, 9), deletedAt: new Date().toISOString(), responses: [...activeForm.responses], formTitle: activeForm.title, formId: activeForm.id };
-              handleUpdateForms(currentUser.forms.map(f => f.id === activeForm.id ? { ...f, responses: [], archivedResponseSets: [...(f.archivedResponseSets || []), archive] } : f));
-            }} 
-            onEditQuestion={() => setCurrentView('editor')} 
-            onUpdateForm={f => handleUpdateForms(currentUser!.forms.map(item => item.id === f.id ? f : item))} 
-          />
+          <ResponseDashboard form={activeForm} onBack={() => setCurrentView('editor')} onArchiveResponses={() => {
+            if (!currentUser) return;
+            const archive: ResponseArchive = { id: Math.random().toString(36).substr(2, 9), deletedAt: new Date().toISOString(), responses: [...activeForm.responses], formTitle: activeForm.title, formId: activeForm.id };
+            handleUpdateForms(currentUser.forms.map(f => f.id === activeForm.id ? { ...f, responses: [], archivedResponseSets: [...(f.archivedResponseSets || []), archive] } : f));
+          }} onEditQuestion={() => setCurrentView('editor')} onUpdateForm={f => handleUpdateForms(currentUser!.forms.map(item => item.id === f.id ? f : item))} />
         )}
 
         {currentView === 'recycle-bin' && currentUser && (
-          <RecycleBin 
-            forms={currentUser.forms.filter(f => f.deletedAt)} 
-            archivedResponses={currentUser.forms.flatMap(f => f.archivedResponseSets || [])} 
-            onRestore={id => handleUpdateForms(currentUser.forms.map(f => f.id === id ? {...f, deletedAt: undefined} : f))} 
-            onPermanentDelete={id => handleUpdateForms(currentUser.forms.filter(f => f.id !== id))} 
-            onRestoreArchive={(fid, aid) => { const f = currentUser.forms.find(x => x.id === fid); const set = f?.archivedResponseSets?.find(s => s.id === aid); if (set) handleUpdateForms(currentUser.forms.map(x => x.id === fid ? {...x, responses: [...x.responses, ...set.responses], archivedResponseSets: x.archivedResponseSets?.filter(s => s.id !== aid)} : x)); }} 
-            onDeleteArchivePermanently={(fid, aid) => handleUpdateForms(currentUser.forms.map(x => x.id === fid ? {...x, archivedResponseSets: x.archivedResponseSets?.filter(s => s.id !== aid)} : x))} 
-            onBack={() => setCurrentView('dashboard')} 
-          />
+          <RecycleBin forms={currentUser.forms.filter(f => f.deletedAt)} archivedResponses={currentUser.forms.flatMap(f => f.archivedResponseSets || [])} onRestore={id => handleUpdateForms(currentUser.forms.map(f => f.id === id ? {...f, deletedAt: undefined} : f))} onPermanentDelete={id => handleUpdateForms(currentUser.forms.filter(f => f.id !== id))} onRestoreArchive={(fid, aid) => { const f = currentUser.forms.find(x => x.id === fid); const set = f?.archivedResponseSets?.find(s => s.id === aid); if (set) handleUpdateForms(currentUser.forms.map(x => x.id === fid ? {...x, responses: [...x.responses, ...set.responses], archivedResponseSets: x.archivedResponseSets?.filter(s => s.id !== aid)} : x)); }} onDeleteArchivePermanently={(fid, aid) => handleUpdateForms(currentUser.forms.map(x => x.id === fid ? {...x, archivedResponseSets: x.archivedResponseSets?.filter(s => s.id !== aid)} : x))} onBack={() => setCurrentView('dashboard')} />
         )}
 
         {currentView === 'settings' && currentUser && <Settings user={currentUser} onUpdate={handleUpdateUser} onBack={() => setCurrentView('dashboard')} />}
       </main>
       
-      <div className="fixed bottom-2 right-4 z-[9999] opacity-30 pointer-events-none text-[8px] font-black uppercase tracking-widest text-[#008272]">Forms Pro | Distributed Node Registry</div>
+      <div className="fixed bottom-2 right-4 z-[9999] opacity-30 pointer-events-none text-[8px] font-black uppercase tracking-widest">AjD Group | High-Performance Engine</div>
     </div>
   );
 };

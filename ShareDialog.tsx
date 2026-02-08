@@ -96,7 +96,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({ formId, isPublished, onClose 
         </div>
         
         <div className="mt-12 pt-8 border-t border-gray-50 text-center">
-          <p className="text-[10px] font-black text-gray-200 uppercase tracking-[0.6em]">Secure Protocol | AjD Group</p>
+          <p className="text-[10px] font-black text-gray-200 uppercase tracking-[0.6em]">Secure Protocol | Forms PRO</p>
         </div>
       </div>
     </div>

@@ -5,7 +5,7 @@ import { User } from '../types';
 /**
  * Secure Password Hashing using native Web Crypto API
  */
-async function hashPassword(password: string): Promise<string> {
+export async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -203,7 +203,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, users, onRegister, onUpdateUser })
             </div>
             <h1 className="text-[#008272] text-6xl font-bold tracking-tight">Forms PRO</h1>
           </div>
-          <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Secure Multi-Device Survey Engine</p>
+          <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Official Forms PRO Multi-Device Survey Engine</p>
         </div>
 
         <div className="md:w-[420px] w-full bg-white/85 backdrop-blur-md p-8 rounded-md shadow-2xl border border-[#edebe9]">

@@ -1,6 +1,6 @@
 {
   "name": "Forms PRO",
-  "description": "A high-fidelity Microsoft Forms replica for creating, managing, and analyzing surveys and quizzes with AI-powered question generation.",
+  "description": "Forms PRO is a high-fidelity survey and quiz platform for creating, managing, and analyzing professional data with AI-powered intelligence.",
   "requestFramePermissions": [
     "camera",
     "microphone"

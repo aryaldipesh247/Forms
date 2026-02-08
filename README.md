@@ -1,17 +1,17 @@
 
-# Forms Pro | Microsoft Forms Clone
+# Forms PRO | Professional Survey Suite
 
-A high-fidelity, professional-grade Microsoft Forms replica built with React, Tailwind CSS, and Google Gemini AI. This application allows users to create, manage, and analyze surveys with modern UI/UX and intelligent features.
+A high-fidelity, professional-grade survey suite built with React 19, Tailwind CSS, and Google Gemini AI. Forms PRO enables users to create, manage, and analyze complex data collection projects with enterprise UI/UX and intelligent automation.
 
 ## ✨ Features
 
-- **AI Assistant**: Powered by Google Gemini (`gemini-3-pro-preview`), automatically generate survey questions based on a topic or suggest visual themes based on your form's content.
-- **Dynamic Themes**: Support for static image backgrounds and "Live" video headers for a premium feel.
-- **Draggable Components**: Draggable title and description blocks for flexible layout design.
-- **Advanced Question Types**: Supports Multiple Choice, Text, Date, Ranking, and a unique "Double Ranking Box" for complex data entry.
-- **Response Analytics**: Built-in dashboard with Recharts integration for visual data analysis.
-- **Excel Integration**: Export response data directly to CSV format compatible with Microsoft Excel.
-- **Recycle Bin**: Graceful deletion with a 30-day retention period for forms and data archives.
+- **Forms PRO AI Assistant**: Powered by Google Gemini (`gemini-3-pro-preview`), automatically generate survey questions or suggest visual themes tailored to your project.
+- **Dynamic Themes**: Support for static images and "Live" video background headers for a premium respondent experience.
+- **Intelligent Layouts**: Draggable title and description blocks for flexible document design.
+- **Advanced Data Types**: Supports Multiple Choice, Text, Date, Ranking, and the exclusive "Double Ranking Box" for multidimensional data entry.
+- **Integrated Analytics**: Built-in dashboard with Recharts for instant visual insights.
+- **Cloud Persistence**: Multi-device synchronization using Cloudinary as a global data store.
+- **Excel Connectivity**: Export response data directly to CSV format for advanced spreadsheet analysis.
 
 ## 🚀 Deployment
 
@@ -26,7 +26,7 @@ A high-fidelity, professional-grade Microsoft Forms replica built with React, Ta
 
 ### Environment Variables
 
-The app requires a Gemini API key to function. Locally, you can create a `.env.local` file:
+Forms PRO requires a Gemini API key for intelligent features.
 ```env
 GEMINI_API_KEY=your_api_key_here
 ```
@@ -38,20 +38,7 @@ GEMINI_API_KEY=your_api_key_here
 - **Animations**: Framer Motion
 - **Charts**: Recharts
 - **AI**: @google/genai (Gemini SDK)
-- **Deployment**: Vercel / GitHub Pages
-
-## 📦 Local Development
-
-```bash
-# Install dependencies
-npm install
-
-# Run development server
-npm run dev
-
-# Build for production
-npm run build
-```
+- **Persistence**: Cloudinary / Local Storage
 
 ---
 Designed and Developed by **AjD Group Of Company** | *Lead Designer: Dipesh Jung Aryal*

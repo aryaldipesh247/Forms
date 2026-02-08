@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Form } from '../types';
 
@@ -40,7 +41,7 @@ const Dashboard: React.FC<DashboardProps> = ({ forms, onCreate, onSelect, onDele
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6 border-b pb-6 border-gray-200">
         <div>
           <h2 className="text-xl font-bold text-[#323130] flex items-center gap-3">
-            Recent forms
+            Recent Forms PRO documents
           </h2>
           <p className="text-[10px] text-[#a19f9d] font-black uppercase tracking-widest mt-1">Manage your active collection</p>
         </div>
@@ -59,7 +60,7 @@ const Dashboard: React.FC<DashboardProps> = ({ forms, onCreate, onSelect, onDele
                     {form.isPublished ? (
                       <span className="text-[8px] bg-green-50 text-green-600 px-1.5 py-0.5 rounded-full font-black uppercase tracking-widest border border-green-100">Live</span>
                     ) : (
-                      <span className="text-[8px] bg-gray-50 text-gray-400 px-1.5 py-0.5 rounded-full font-black uppercase tracking-widest border border-gray-100">Draft</span>
+                      <span className="text-[8px] bg-gray-50 text-gray-400 px-1.5 py-0.5 rounded-full font-black uppercase tracking-widest border border-green-100">Draft</span>
                     )}
                     <button 
                       onClick={(e) => { e.stopPropagation(); onDuplicate(form); }}

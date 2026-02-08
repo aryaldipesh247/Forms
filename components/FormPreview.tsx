@@ -157,7 +157,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
           {!isGuest && (
             <button onClick={onBack} className="w-full py-5 text-white font-black uppercase tracking-widest rounded-xl shadow-xl hover:brightness-110 transition-all" style={{ backgroundColor: form.theme?.primaryColor || '#008272' }}>Close Preview</button>
           )}
-          {isGuest && <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.3em]">Link Securely Handled by Forms Pro</p>}
+          {isGuest && <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.3em]">Link Securely Handled by Forms PRO</p>}
         </div>
       </div>
     );
@@ -173,7 +173,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
         {!isGuest ? (
           <button onClick={onBack} className="text-[10px] font-black uppercase tracking-widest text-[#008272] hover:opacity-70">← Exit Preview</button>
         ) : (
-          <div className="flex items-center gap-2 font-black text-[#008272] text-[10px] tracking-[0.2em] uppercase">Forms Pro Respondent</div>
+          <div className="flex items-center gap-2 font-black text-[#008272] text-[10px] tracking-[0.2em] uppercase">Forms PRO Respondent</div>
         )}
         <div className="w-2 h-2 rounded-full bg-[#008272] animate-pulse"></div>
       </nav>
