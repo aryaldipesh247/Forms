@@ -17,6 +17,7 @@ const App: React.FC = () => {
   const [activeFormId, setActiveFormId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isDirty, setIsDirty] = useState(false); // New flag to prevent wipe on boot
 
   const handleHashChange = useCallback(() => {
     const hash = window.location.hash;
@@ -42,7 +43,6 @@ const App: React.FC = () => {
       const adminSecret = 'Jungdai@1';
       const adminPin = '1111';
       
-      // Ensure admin exists with hashed credentials that match Auth login logic
       if (!loadedUsers.find(u => u.email === adminEmail)) {
         const hashedPassword = await hashPassword(adminSecret);
         const hashedPin = await hashPassword(adminPin);
@@ -60,6 +60,7 @@ const App: React.FC = () => {
 
       setUsers(loadedUsers);
       setIsLoading(false);
+      setIsDirty(false); // Important: Initial load is not "dirty"
 
       const hash = window.location.hash;
       if (hash.startsWith('#preview/')) {
@@ -70,17 +71,18 @@ const App: React.FC = () => {
     init();
   }, []);
 
-  // Sync to Cloudinary whenever users change
+  // Sync to Cloudinary ONLY when data is actually modified (isDirty)
   useEffect(() => {
-    if (!isLoading && users.length > 0) {
+    if (!isLoading && isDirty && users.length > 0) {
       const sync = async () => {
         setIsSyncing(true);
         await saveDatabase(users);
         setIsSyncing(false);
+        setIsDirty(false); // Reset dirty flag after successful sync
       };
       sync();
     }
-  }, [users, isLoading]);
+  }, [users, isLoading, isDirty]);
 
   const activeForm = useMemo(() => {
     if (!activeFormId || users.length === 0) return null;
@@ -88,7 +90,14 @@ const App: React.FC = () => {
   }, [users, activeFormId]);
 
   const handleUpdateUser = useCallback((updatedUser: User) => {
-    setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+    setUsers(prev => {
+      const exists = prev.some(u => u.id === updatedUser.id);
+      if (exists) {
+        return prev.map(u => u.id === updatedUser.id ? updatedUser : u);
+      }
+      return [...prev, updatedUser];
+    });
+    setIsDirty(true); // Mark as dirty for cloud sync
     if (currentUser?.id === updatedUser.id) {
       setCurrentUser(updatedUser);
     }
@@ -116,7 +125,12 @@ const App: React.FC = () => {
       <Auth 
         onLogin={u => { setCurrentUser(u); setCurrentView('dashboard'); window.location.hash = ''; }} 
         users={users} 
-        onRegister={u => { setUsers(prev => [...prev, u]); setCurrentUser(u); setCurrentView('dashboard'); }} 
+        onRegister={u => { 
+          setUsers(prev => [...prev, u]); 
+          setCurrentUser(u); 
+          setIsDirty(true);
+          setCurrentView('dashboard'); 
+        }} 
         onUpdateUser={handleUpdateUser} 
       />
     );

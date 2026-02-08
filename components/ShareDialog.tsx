@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useMemo } from 'react';
 
 interface ShareDialogProps {
@@ -9,11 +10,18 @@ interface ShareDialogProps {
 const ShareDialog: React.FC<ShareDialogProps> = ({ formId, isPublished, onClose }) => {
   const [copied, setCopied] = useState(false);
   
-  // Robust URL generation for single-page hash routing
+  // Generates a robust absolute URL using the native URL API
   const shareUrl = useMemo(() => {
-    const base = window.location.origin + window.location.pathname;
-    const cleanBase = base.endsWith('/') ? base : base + '/';
-    return `${cleanBase}#preview/${formId}`;
+    try {
+      // Use window.location.href as a base, but remove existing hashes or queries
+      const url = new URL(window.location.origin + window.location.pathname);
+      url.hash = `#preview/${formId}`;
+      return url.toString();
+    } catch (e) {
+      // Fallback for extreme cases
+      const base = window.location.origin + window.location.pathname;
+      return `${base.replace(/\/$/, '')}/#preview/${formId}`;
+    }
   }, [formId]);
 
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(shareUrl)}&bgcolor=ffffff&color=008272`;
@@ -23,12 +31,15 @@ const ShareDialog: React.FC<ShareDialogProps> = ({ formId, isPublished, onClose 
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(shareUrl);
       } else {
-        // Fallback for non-secure contexts
         const textArea = document.createElement("textarea");
         textArea.value = shareUrl;
         document.body.appendChild(textArea);
         textArea.select();
-        document.execCommand('copy');
+        try {
+          document.execCommand('copy');
+        } catch (err) {
+          console.error('Fallback copy failed', err);
+        }
         document.body.removeChild(textArea);
       }
       setCopied(true);

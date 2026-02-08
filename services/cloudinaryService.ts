@@ -8,7 +8,7 @@ const CLOUD_NAME = 'dzf6p3gmk';
 const API_KEY = '887598222425235';
 const API_SECRET = 'DdduNlwD4r0hgt3f_drmX9pXui0';
 const UPLOAD_PRESET = 'ml_default'; 
-const DB_PUBLIC_ID = 'forms_pro_global_v2'; // Fixed identifier for multi-device sync
+const DB_PUBLIC_ID = 'forms_pro_data_global_v3'; // Unique identifier for global sync
 
 async function generateSignature(params: Record<string, string>, secret: string): Promise<string> {
   const sortedKeys = Object.keys(params).sort();
@@ -37,7 +37,7 @@ export const uploadToCloudinary = async (
   
   if (customPublicId) {
     paramsToSign['public_id'] = customPublicId;
-    paramsToSign['invalidate'] = 'true'; // Ensure cloud cache is cleared
+    paramsToSign['invalidate'] = 'true';
   }
 
   const signature = await generateSignature(paramsToSign, API_SECRET);
@@ -73,25 +73,28 @@ export const uploadImageToCloudinary = (file: File | string) => uploadToCloudina
 
 export const syncDatabaseToCloudinary = async (users: any): Promise<string> => {
   const dbContent = {
-    version: '1.2',
+    version: '1.3',
     updatedAt: new Date().toISOString(),
     users: users
   };
   const jsonBlob = new Blob([JSON.stringify(dbContent)], { type: 'application/json' });
-  // Use a fixed public_id so all devices can find this file
   return uploadToCloudinary(jsonBlob, 'raw', DB_PUBLIC_ID);
 };
 
 export const fetchDatabaseFromCloud = async (): Promise<any | null> => {
   try {
-    // Construct the URL directly based on Cloudinary's pattern for raw files
-    const url = `https://res.cloudinary.com/${CLOUD_NAME}/raw/upload/v${Date.now()}/${DB_PUBLIC_ID}.json`;
+    // FIXED: Use query parameter for cache busting instead of an invalid version number in the path
+    // Cloudinary raw files are served from /raw/upload/{public_id}
+    const url = `https://res.cloudinary.com/${CLOUD_NAME}/raw/upload/${DB_PUBLIC_ID}?t=${Date.now()}`;
     const response = await fetch(url);
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.warn(`Cloud database not found or inaccessible (Status: ${response.status})`);
+      return null;
+    }
     const data = await response.json();
     return data.users || null;
   } catch (e) {
-    console.warn("Cloud fetch failed:", e);
+    console.warn("Cloud fetch failed due to network or parsing error:", e);
     return null;
   }
 };
