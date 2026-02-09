@@ -31,7 +31,7 @@ const ImageUploadQuestion = ({ q, value, onAnswer }: { q: Question, value: any, 
         {isUploading ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-40 bg-gray-50 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-3">
              <div className="w-8 h-8 border-2 border-[#008272] border-t-transparent rounded-full animate-spin"></div>
-             <p className="text-[10px] font-black uppercase text-[#008272] tracking-widest">Uploading to Cloudinary...</p>
+             <p className="text-[10px] font-black uppercase text-[#008272] tracking-widest">Uploading...</p>
           </motion.div>
         ) : preview ? (
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="relative group">
@@ -111,21 +111,12 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
 
   if (!form) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f3f2f1] p-6 animate-in fade-in duration-300">
-        <div className="bg-white p-12 rounded-2xl shadow-2xl text-center max-w-sm border border-gray-100">
-          <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-inner">⚠️</div>
-          <h2 className="text-3xl font-black text-[#323130] mb-3 tracking-tighter">Form Not Found</h2>
-          <div className="text-left space-y-4 mb-8">
-            <p className="text-gray-500 text-sm font-bold uppercase tracking-widest leading-relaxed">
-              Why am I seeing this?
-            </p>
-            <ul className="text-xs text-gray-400 space-y-2 list-disc pl-4 font-medium">
-              <li>You may be accessing this from a <strong>different device</strong> or browser. In this demo, data stays on the device it was created.</li>
-              <li>The form may have been moved or deleted by the owner.</li>
-              <li>The shared link might be incomplete.</li>
-            </ul>
-          </div>
-          <button onClick={onBack} className="w-full bg-[#008272] text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-[0.3em] shadow-xl hover:brightness-110 active:scale-95 transition-all">Go Home</button>
+      <div className="min-h-screen flex items-center justify-center bg-[#f3f2f1] p-6">
+        <div className="bg-white p-12 rounded-2xl shadow-2xl text-center max-w-sm border">
+          <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">⚠️</div>
+          <h2 className="text-3xl font-black mb-3">Form Not Found</h2>
+          <p className="text-gray-400 text-xs mb-8">This form may have been removed or the link is invalid.</p>
+          <button onClick={onBack} className="w-full bg-[#008272] text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl">Go Home</button>
         </div>
       </div>
     );
@@ -136,9 +127,9 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
       <div className="min-h-screen flex items-center justify-center p-6 bg-[#f3f2f1]">
         <div className="max-w-md w-full bg-white p-12 rounded-2xl shadow-2xl text-center border-t-[14px] border-red-500">
           <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-8 text-3xl">🚫</div>
-          <h2 className="text-3xl font-black mb-4 tracking-tighter">Form Unavailable</h2>
-          <p className="text-gray-400 text-xs font-black uppercase tracking-[0.2em] mb-12">The owner hasn't made this form public yet.</p>
-          <div className="text-[10px] font-black text-gray-300 uppercase tracking-[0.4em]">Proprietary Engine | AjD Group</div>
+          <h2 className="text-3xl font-black mb-4">Form Restricted</h2>
+          <p className="text-gray-400 text-xs uppercase tracking-widest mb-12">This form is currently in draft mode.</p>
+          <div className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Forms PRO Secure Protocol</div>
         </div>
       </div>
     );
@@ -146,19 +137,18 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-[#f3f2f1] animate-in zoom-in duration-500">
+      <div className="min-h-screen flex items-center justify-center p-6 bg-[#f3f2f1]">
         <div className="max-w-md w-full bg-white p-12 rounded-2xl shadow-2xl text-center border-t-[14px]" style={{ borderTopColor: form.theme?.primaryColor || '#008272' }}>
           <div className="w-20 h-20 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto mb-8 text-4xl shadow-inner">✓</div>
-          <h2 className="text-4xl font-black mb-2 tracking-tighter">Success!</h2>
+          <h2 className="text-4xl font-black mb-2">Success!</h2>
           <p className="text-gray-500 font-bold mb-10">Thank you for your response.</p>
           <div className="bg-[#faf9f8] p-10 rounded-2xl border-2 border-dashed border-gray-200 mb-10">
-            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-gray-400 mb-4">Submission ID</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">Submission Serial</p>
             <p className="text-6xl font-black text-[#323130]">#{ticketNumber}</p>
           </div>
           {!isGuest && (
-            <button onClick={onBack} className="w-full py-5 text-white font-black uppercase tracking-widest rounded-xl shadow-xl hover:brightness-110 transition-all" style={{ backgroundColor: form.theme?.primaryColor || '#008272' }}>Close Preview</button>
+            <button onClick={onBack} className="w-full py-5 text-white font-black uppercase tracking-widest rounded-xl shadow-xl" style={{ backgroundColor: form.theme?.primaryColor || '#008272' }}>Exit Preview</button>
           )}
-          {isGuest && <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.3em]">Link Securely Handled by Forms PRO</p>}
         </div>
       </div>
     );
@@ -168,13 +158,13 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
 
   return (
     <div className="min-h-screen pb-24 overflow-x-hidden relative" style={{ backgroundColor: theme.backgroundColor, backgroundImage: theme.backgroundImage ? `url(${theme.backgroundImage})` : 'none', backgroundSize: 'cover', backgroundAttachment: 'fixed' }}>
-      {theme.backgroundVideoUrl && <video autoPlay loop muted playsInline className="fixed inset-0 w-full h-full object-cover -z-10 opacity-30 pointer-events-none"><source src={theme.backgroundVideoUrl} type="video/mp4" /></video>}
+      {theme.backgroundVideoUrl && <video autoPlay loop muted playsInline className="fixed inset-0 w-full h-full object-cover -z-10 opacity-30"><source src={theme.backgroundVideoUrl} type="video/mp4" /></video>}
       
       <nav className="bg-white/95 backdrop-blur-md sticky top-0 z-40 border-b p-4 shadow-sm flex justify-between items-center px-8 h-14 transition-all">
         {!isGuest ? (
-          <button onClick={onBack} className="text-[10px] font-black uppercase tracking-widest text-[#008272] hover:opacity-70">← Exit Preview</button>
+          <button onClick={onBack} className="text-[10px] font-black uppercase tracking-widest text-[#008272] hover:opacity-70">← Back to Editor</button>
         ) : (
-          <div className="flex items-center gap-2 font-black text-[#008272] text-[10px] tracking-[0.2em] uppercase">Forms PRO Respondent</div>
+          <div className="flex items-center gap-2 font-black text-[#008272] text-[10px] tracking-widest uppercase">Forms PRO | Respondent Interface</div>
         )}
         <div className="w-2 h-2 rounded-full bg-[#008272] animate-pulse"></div>
       </nav>
@@ -183,7 +173,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="bg-white/95 backdrop-blur-md rounded shadow-2xl border-t-[14px] p-12 relative overflow-hidden" style={{ borderTopColor: theme.primaryColor }}>
           {theme.logoUrl && (
             <div className={`mb-8 flex ${theme.logoAlignment === 'center' ? 'justify-center' : (theme.logoAlignment === 'right' ? 'justify-end' : 'justify-start')}`}>
-              <img src={theme.logoUrl} style={{ width: `${(theme.logoScale || 100) * 0.7}px` }} className="h-auto object-contain drop-shadow-sm" alt="Logo" />
+              <img src={theme.logoUrl} style={{ width: `${(theme.logoScale || 100) * 0.7}px` }} className="h-auto object-contain" alt="Logo" />
             </div>
           )}
           <h1 className="text-4xl font-black text-[#323130] mb-6 tracking-tighter leading-tight">{form.title}</h1>
@@ -235,7 +225,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
                   {(answers[q.id] || []).length > 0 && (
                     <div className="mb-4 p-4 bg-[#faf9f8] rounded-xl border border-dashed border-[#008272]/30 flex flex-wrap gap-2 items-center">
                       {(answers[q.id] || []).map((rankItem: string, i: number) => (
-                        <span key={i} className="px-3 py-1 bg-[#008272] text-white text-[10px] font-black rounded-full animate-in zoom-in duration-200">
+                        <span key={i} className="px-3 py-1 bg-[#008272] text-white text-[10px] font-black rounded-full shadow-sm">
                           {i + 1}. {rankItem}
                         </span>
                       ))}
@@ -243,7 +233,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
                         onClick={() => handleAnswer(q.id, [])} 
                         className="text-[10px] font-black text-red-500 ml-auto uppercase tracking-widest hover:underline"
                       >
-                        Clear Order
+                        Reset Order
                       </button>
                     </div>
                   )}
@@ -266,24 +256,24 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
               )}
 
               {q.type === QuestionType.DOUBLE_RANKING_BOX && (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-separate border-spacing-y-3">
-                    <thead>
+                <div className="overflow-x-auto border-2 border-gray-50 rounded-xl">
+                  <table className="w-full border-collapse">
+                    <thead className="bg-gray-50">
                       <tr>
-                        <th className="text-left text-[10px] font-black uppercase text-gray-400 px-2 pb-2">Entry Item</th>
-                        <th className="text-center text-[10px] font-black uppercase text-gray-400 pb-2">{q.columnName || 'Detail Box'}</th>
-                        <th className="text-center text-[10px] font-black uppercase text-gray-400 pb-2">{q.columnNameSmall || 'Small Box'}</th>
+                        <th className="text-left text-[10px] font-black uppercase text-gray-400 p-4">Item</th>
+                        <th className="text-center text-[10px] font-black uppercase text-gray-400 p-4">{q.columnName || 'Detail'}</th>
+                        <th className="text-center text-[10px] font-black uppercase text-gray-400 p-4">{q.columnNameSmall || 'Value'}</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-gray-50">
                       {q.options?.map(o => (
-                        <tr key={o.id} className="bg-gray-50/50">
-                          <td className="p-4 rounded-l-xl font-black text-xs text-[#323130] border-y-2 border-l-2 border-gray-100 bg-white/50">{o.text}</td>
-                          <td className="p-2 border-y-2 border-gray-100 bg-white/50">
+                        <tr key={o.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="p-4 font-black text-xs text-[#323130]">{o.text}</td>
+                          <td className="p-2">
                             <input
                               type="text"
-                              placeholder="Enter detail..."
-                              className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm font-medium focus:border-[#008272] focus:ring-1 focus:ring-[#008272] outline-none transition-all"
+                              placeholder="..."
+                              className="w-full p-3 bg-white border border-gray-100 rounded-lg text-sm font-medium focus:border-[#008272] outline-none transition-all shadow-sm"
                               onChange={e => {
                                 const current = answers[q.id] || {};
                                 const row = current[o.id] || {};
@@ -291,11 +281,11 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
                               }}
                             />
                           </td>
-                          <td className="p-2 rounded-r-xl border-y-2 border-r-2 border-gray-100 bg-white/50">
+                          <td className="p-2">
                             <input
                               type="text"
-                              placeholder="Val"
-                              className="w-24 mx-auto p-3 bg-white border border-gray-200 rounded-lg text-sm text-center font-black focus:border-[#008272] focus:ring-1 focus:ring-[#008272] outline-none transition-all"
+                              placeholder="0"
+                              className="w-20 mx-auto p-3 bg-white border border-gray-100 rounded-lg text-sm text-center font-black focus:border-[#008272] outline-none shadow-sm"
                               onChange={e => {
                                 const current = answers[q.id] || {};
                                 const row = current[o.id] || {};
@@ -312,7 +302,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
 
               {q.type === QuestionType.TEXT && (
                 <textarea 
-                  className="w-full border-2 border-gray-100 p-5 rounded-xl bg-gray-50 focus:bg-white focus:border-[#008272] transition-all outline-none font-bold text-sm min-h-[140px] shadow-inner" 
+                  className="w-full border-2 border-gray-100 p-5 rounded-xl bg-gray-50 focus:bg-white focus:border-[#008272] transition-all outline-none font-bold text-sm min-h-[140px]" 
                   placeholder="Enter your response here..." 
                   onChange={e => handleAnswer(q.id, e.target.value)} 
                 />
@@ -321,7 +311,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
               {q.type === QuestionType.DATE && (
                 <input 
                   type="date" 
-                  className="w-full border-2 border-gray-100 p-5 rounded-xl bg-gray-50 font-black outline-none focus:border-[#008272] shadow-inner" 
+                  className="w-full border-2 border-gray-100 p-5 rounded-xl bg-gray-50 font-black outline-none focus:border-[#008272]" 
                   onChange={e => handleAnswer(q.id, e.target.value)} 
                 />
               )}
@@ -332,15 +322,10 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
         <button 
           onClick={handleSubmit} 
           disabled={isSubmitting}
-          className="w-full py-6 text-white font-black uppercase tracking-[0.3em] rounded-2xl shadow-2xl hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-3 text-sm"
+          className="w-full py-6 text-white font-black uppercase tracking-widest rounded-2xl shadow-2xl hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-3 text-sm"
           style={{ backgroundColor: theme.primaryColor }}
         >
-          {isSubmitting ? (
-            <>
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              Processing...
-            </>
-          ) : 'Submit Response'}
+          {isSubmitting ? 'Submitting...' : 'Submit Response'}
         </button>
       </div>
     </div>

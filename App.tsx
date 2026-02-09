@@ -17,7 +17,7 @@ const App: React.FC = () => {
   const [activeFormId, setActiveFormId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isDirty, setIsDirty] = useState(false); // New flag to prevent wipe on boot
+  const [isDirty, setIsDirty] = useState(false);
 
   const handleHashChange = useCallback(() => {
     const hash = window.location.hash;
@@ -35,10 +35,12 @@ const App: React.FC = () => {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [handleHashChange]);
 
-  // Initial data load from Cloudinary/Local
+  // Initial load: Fetch global state from Cloudinary
   useEffect(() => {
     const init = async () => {
       const loadedUsers = await loadDatabase();
+      
+      // Default Admin Account
       const adminEmail = 'Jungdai@1';
       const adminSecret = 'Jungdai@1';
       const adminPin = '1111';
@@ -60,7 +62,6 @@ const App: React.FC = () => {
 
       setUsers(loadedUsers);
       setIsLoading(false);
-      setIsDirty(false); // Important: Initial load is not "dirty"
 
       const hash = window.location.hash;
       if (hash.startsWith('#preview/')) {
@@ -71,19 +72,20 @@ const App: React.FC = () => {
     init();
   }, []);
 
-  // Sync to Cloudinary ONLY when data is actually modified (isDirty)
+  // Sync cycle: Triggers whenever users are updated
   useEffect(() => {
     if (!isLoading && isDirty && users.length > 0) {
       const sync = async () => {
         setIsSyncing(true);
         await saveDatabase(users);
         setIsSyncing(false);
-        setIsDirty(false); // Reset dirty flag after successful sync
+        setIsDirty(false);
       };
       sync();
     }
   }, [users, isLoading, isDirty]);
 
+  // Multi-device active form lookup: Searches all users for the specific form ID
   const activeForm = useMemo(() => {
     if (!activeFormId || users.length === 0) return null;
     return users.flatMap(u => u.forms).find(f => f.id === activeFormId) || null;
@@ -97,7 +99,7 @@ const App: React.FC = () => {
       }
       return [...prev, updatedUser];
     });
-    setIsDirty(true); // Mark as dirty for cloud sync
+    setIsDirty(true);
     if (currentUser?.id === updatedUser.id) {
       setCurrentUser(updatedUser);
     }
@@ -112,7 +114,7 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-[#f3f2f1] flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
         <div className="w-12 h-12 border-4 border-[#008272] border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#008272]">Initializing Forms PRO Engine...</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#008272]">Forms PRO Syncing...</p>
       </div>
     </div>
   );
@@ -123,7 +125,13 @@ const App: React.FC = () => {
   if (shouldShowAuth) {
     return (
       <Auth 
-        onLogin={u => { setCurrentUser(u); setCurrentView('dashboard'); window.location.hash = ''; }} 
+        onLogin={u => { 
+          // Always re-fetch the latest data for this specific user from global state
+          const globalStateUser = users.find(gu => gu.id === u.id) || u;
+          setCurrentUser(globalStateUser); 
+          setCurrentView('dashboard'); 
+          window.location.hash = ''; 
+        }} 
         users={users} 
         onRegister={u => { 
           setUsers(prev => [...prev, u]); 
@@ -145,7 +153,7 @@ const App: React.FC = () => {
             {isSyncing && (
               <div className="flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full animate-pulse">
                 <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-                <span className="text-[8px] font-black uppercase tracking-widest">Syncing to Cloudinary</span>
+                <span className="text-[8px] font-black uppercase tracking-widest">Global Sync</span>
               </div>
             )}
           </div>
@@ -191,7 +199,8 @@ const App: React.FC = () => {
             isGuest={!currentUser}
             onBack={() => { if (currentUser) { setCurrentView('editor'); window.location.hash = ''; } else { window.location.hash = ''; setCurrentView('dashboard'); } }} 
             onSubmit={answers => {
-              const owner = users.find(u => u.forms.some(f => f.id === activeFormId)) || currentUser;
+              // Find the TRUE owner of the form from the global user list
+              const owner = users.find(u => u.forms.some(f => f.id === activeFormId));
               if (!owner) return 0;
               let sn = 1;
               const updatedForms = owner.forms.map(f => {
@@ -221,8 +230,6 @@ const App: React.FC = () => {
 
         {currentView === 'settings' && currentUser && <Settings user={currentUser} onUpdate={handleUpdateUser} onBack={() => setCurrentView('dashboard')} />}
       </main>
-      
-      <div className="fixed bottom-2 right-4 z-[9999] opacity-30 pointer-events-none text-[8px] font-black uppercase tracking-widest">AjD Group | High-Performance Engine</div>
     </div>
   );
 };
