@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback } from 'react';
 import { Form, QuestionType, Question } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -209,12 +210,103 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
                         name={q.id} 
                         className="w-6 h-6 cursor-pointer" 
                         style={{ accentColor: theme.primaryColor }} 
-                        onChange={() => handleAnswer(q.id, o.text)} 
+                        onChange={() => {
+                          if (q.multipleSelection) {
+                            const current = answers[q.id] || [];
+                            if (current.includes(o.text)) {
+                              handleAnswer(q.id, current.filter((v: string) => v !== o.text));
+                            } else {
+                              handleAnswer(q.id, [...current, o.text]);
+                            }
+                          } else {
+                            handleAnswer(q.id, o.text);
+                          }
+                        }} 
                         checked={q.multipleSelection ? (answers[q.id] || []).includes(o.text) : answers[q.id] === o.text}
                       />
                       <span className="font-black text-sm text-[#323130] uppercase tracking-wider group-hover:text-[#008272]">{o.text}</span>
                     </label>
                   ))}
+                </div>
+              )}
+
+              {q.type === QuestionType.RANKING && (
+                <div className="space-y-3">
+                  {(answers[q.id] || []).length > 0 && (
+                    <div className="mb-4 p-4 bg-[#faf9f8] rounded-xl border border-dashed border-[#008272]/30 flex flex-wrap gap-2 items-center">
+                      {(answers[q.id] || []).map((rankItem: string, i: number) => (
+                        <span key={i} className="px-3 py-1 bg-[#008272] text-white text-[10px] font-black rounded-full animate-in zoom-in duration-200">
+                          {i + 1}. {rankItem}
+                        </span>
+                      ))}
+                      <button 
+                        onClick={() => handleAnswer(q.id, [])} 
+                        className="text-[10px] font-black text-red-500 ml-auto uppercase tracking-widest hover:underline"
+                      >
+                        Clear Order
+                      </button>
+                    </div>
+                  )}
+                  {q.options?.filter(o => !(answers[q.id] || []).includes(o.text)).map(o => (
+                    <button
+                      key={o.id}
+                      onClick={() => {
+                        const current = answers[q.id] || [];
+                        handleAnswer(q.id, [...current, o.text]);
+                      }}
+                      className="w-full flex items-center gap-4 p-5 border-2 border-gray-100 rounded-xl hover:border-[#008272] hover:bg-teal-50/20 cursor-pointer transition-all active:scale-[0.99] group text-left"
+                    >
+                      <div className="w-8 h-8 rounded-full border-2 border-gray-200 flex items-center justify-center text-xs font-black text-gray-300 group-hover:border-[#008272] group-hover:text-[#008272]">
+                        ?
+                      </div>
+                      <span className="font-black text-sm text-[#323130] uppercase tracking-wider group-hover:text-[#008272]">{o.text}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {q.type === QuestionType.DOUBLE_RANKING_BOX && (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-separate border-spacing-y-3">
+                    <thead>
+                      <tr>
+                        <th className="text-left text-[10px] font-black uppercase text-gray-400 px-2 pb-2">Entry Item</th>
+                        <th className="text-center text-[10px] font-black uppercase text-gray-400 pb-2">{q.columnName || 'Detail Box'}</th>
+                        <th className="text-center text-[10px] font-black uppercase text-gray-400 pb-2">{q.columnNameSmall || 'Small Box'}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {q.options?.map(o => (
+                        <tr key={o.id} className="bg-gray-50/50">
+                          <td className="p-4 rounded-l-xl font-black text-xs text-[#323130] border-y-2 border-l-2 border-gray-100 bg-white/50">{o.text}</td>
+                          <td className="p-2 border-y-2 border-gray-100 bg-white/50">
+                            <input
+                              type="text"
+                              placeholder="Enter detail..."
+                              className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm font-medium focus:border-[#008272] focus:ring-1 focus:ring-[#008272] outline-none transition-all"
+                              onChange={e => {
+                                const current = answers[q.id] || {};
+                                const row = current[o.id] || {};
+                                handleAnswer(q.id, { ...current, [o.id]: { ...row, [`${q.columnName || 'detail'}_big`]: e.target.value } });
+                              }}
+                            />
+                          </td>
+                          <td className="p-2 rounded-r-xl border-y-2 border-r-2 border-gray-100 bg-white/50">
+                            <input
+                              type="text"
+                              placeholder="Val"
+                              className="w-24 mx-auto p-3 bg-white border border-gray-200 rounded-lg text-sm text-center font-black focus:border-[#008272] focus:ring-1 focus:ring-[#008272] outline-none transition-all"
+                              onChange={e => {
+                                const current = answers[q.id] || {};
+                                const row = current[o.id] || {};
+                                handleAnswer(q.id, { ...current, [o.id]: { ...row, [`${q.columnNameSmall || 'value'}_small`]: e.target.value } });
+                              }}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
 
