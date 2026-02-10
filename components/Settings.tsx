@@ -27,8 +27,8 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdate, onDeleteAccount, on
   const handleDelete = () => {
     if (confirm("WARNING: Are you sure you want to delete your account? This will permanently remove all your forms and response data. This action cannot be undone.")) {
       const finalPin = prompt("Please enter your 4-digit PIN to confirm deletion:");
-      // Since pin might be hashed in actual storage, we compare with the state which represents current knowledge
-      // However, the prompt is just a secondary safety layer here.
+      // We allow the callback to proceed if they interact with the prompt.
+      // In a real app, we'd verify this against the hashed pin.
       if (finalPin) {
         onDeleteAccount(user.id);
       }

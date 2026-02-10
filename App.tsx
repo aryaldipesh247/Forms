@@ -8,27 +8,36 @@ import ResponseDashboard from './components/ResponseDashboard';
 import RecycleBin from './components/RecycleBin';
 import Auth, { hashPassword } from './components/Auth';
 import Settings from './components/Settings';
-import { saveDatabase, loadDatabase, deleteUserCompletely } from './services/databaseService';
+import { saveDatabase, loadDatabase, deleteUserCompletely, getFormById, saveResponse } from './services/databaseService';
 
 const App: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [activeFormId, setActiveFormId] = useState<string | null>(null);
+  const [deepLinkForm, setDeepLinkForm] = useState<Form | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
 
-  const handleHashChange = useCallback(() => {
+  const handleHashChange = useCallback(async () => {
     const hash = window.location.hash;
     if (hash.startsWith('#preview/')) {
       const id = hash.replace('#preview/', '');
       setActiveFormId(id);
       setCurrentView('preview');
+      
+      // If we don't have the form locally, fetch it immediately from the cloud
+      const localForm = users.flatMap(u => u.forms).find(f => f.id === id);
+      if (!localForm) {
+        const cloudForm = await getFormById(id);
+        if (cloudForm) setDeepLinkForm(cloudForm);
+      }
     } else if (currentView === 'preview') {
       setCurrentView('dashboard');
+      setDeepLinkForm(null);
     }
-  }, [currentView]);
+  }, [currentView, users]);
 
   useEffect(() => {
     window.addEventListener('hashchange', handleHashChange);
@@ -63,16 +72,20 @@ const App: React.FC = () => {
       setUsers(loadedUsers);
       setIsLoading(false);
 
+      // Handle direct link on boot
       const hash = window.location.hash;
       if (hash.startsWith('#preview/')) {
-        setActiveFormId(hash.replace('#preview/', ''));
+        const id = hash.replace('#preview/', '');
+        setActiveFormId(id);
         setCurrentView('preview');
+        const cloudForm = await getFormById(id);
+        if (cloudForm) setDeepLinkForm(cloudForm);
       }
     };
     init();
   }, []);
 
-  // Sync cycle
+  // Sync cycle for owner updates
   useEffect(() => {
     if (!isLoading && isDirty && users.length > 0) {
       const sync = async () => {
@@ -86,9 +99,11 @@ const App: React.FC = () => {
   }, [users, isLoading, isDirty]);
 
   const activeForm = useMemo(() => {
-    if (!activeFormId || users.length === 0) return null;
-    return users.flatMap(u => u.forms).find(f => f.id === activeFormId) || null;
-  }, [users, activeFormId]);
+    if (!activeFormId) return null;
+    // Prefer deep linked form for guest previews, otherwise look in user local data
+    const userForm = users.flatMap(u => u.forms).find(f => f.id === activeFormId);
+    return deepLinkForm || userForm || null;
+  }, [users, activeFormId, deepLinkForm]);
 
   const handleUpdateUser = useCallback((updatedUser: User) => {
     setUsers(prev => {
@@ -107,16 +122,12 @@ const App: React.FC = () => {
   const handleDeleteUser = useCallback(async (userId: string) => {
     const userToDelete = users.find(u => u.id === userId);
     if (!userToDelete) return;
-
-    // Call service to remove from cloud
     await deleteUserCompletely(userId, userToDelete.forms);
-    
-    // Update local state
     setUsers(prev => prev.filter(u => u.id !== userId));
     setCurrentUser(null);
     setCurrentView('dashboard');
     window.location.hash = '';
-    alert('Your account and all associated data have been deleted completely.');
+    alert('Account deleted successfully.');
   }, [users]);
 
   const handleUpdateForms = useCallback((updatedForms: Form[]) => {
@@ -126,7 +137,7 @@ const App: React.FC = () => {
 
   const GlobalFooter = () => (
     <footer className="fixed bottom-2 right-4 z-[9999] pointer-events-none select-none text-right">
-      <div className="text-[7px] md:text-[8px] font-bold text-gray-400/60 uppercase tracking-tight">
+      <div className="text-[7px] md:text-[8px] font-bold text-gray-400/70 uppercase tracking-tight">
         AjD Group of Company | Designed By Dipesh Jung<br/>
         Contact:aryaldipesh248@gmail.com
       </div>
@@ -147,7 +158,7 @@ const App: React.FC = () => {
 
   if (shouldShowAuth) {
     return (
-      <>
+      <div className="min-h-screen relative overflow-hidden">
         <Auth 
           onLogin={u => { 
             const globalStateUser = users.find(gu => gu.id === u.id) || u;
@@ -165,12 +176,12 @@ const App: React.FC = () => {
           onUpdateUser={handleUpdateUser} 
         />
         <GlobalFooter />
-      </>
+      </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col antialiased selection:bg-[#008272]/20" style={{ backgroundColor: currentView === 'preview' ? activeForm?.theme?.backgroundColor || '#f3f2f1' : '#f3f2f1' }}>
+    <div className="min-h-screen flex flex-col antialiased selection:bg-[#008272]/20 relative" style={{ backgroundColor: currentView === 'preview' ? activeForm?.theme?.backgroundColor || '#f3f2f1' : '#f3f2f1' }}>
       {currentView !== 'preview' && (
         <header className="bg-[#008272] px-6 h-12 flex justify-between items-center z-[100] text-white shadow-sm sticky top-0 transition-all">
           <div className="flex items-center gap-3">
@@ -231,18 +242,34 @@ const App: React.FC = () => {
             form={activeForm} 
             isGuest={!currentUser}
             onBack={() => { if (currentUser) { setCurrentView('editor'); window.location.hash = ''; } else { window.location.hash = ''; setCurrentView('dashboard'); } }} 
-            onSubmit={answers => {
-              const owner = users.find(u => u.forms.some(f => f.id === activeFormId));
-              if (!owner) return 0;
-              let sn = 1;
-              const updatedForms = owner.forms.map(f => {
-                if (f.id === activeFormId) { 
-                  sn = f.responses.length + 1; 
-                  return { ...f, responses: [...f.responses, { id: Math.random().toString(36).substr(2, 9), formId: f.id, timestamp: new Date().toISOString(), answers, serialNumber: sn }] }; 
-                }
-                return f;
-              });
-              handleUpdateUser({ ...owner, forms: updatedForms }); 
+            onSubmit={async (answers) => {
+              const fid = activeFormId || activeForm?.id;
+              if (!fid) return 0;
+              
+              // Calculate next serial number locally or via activeForm responses
+              const sn = (activeForm?.responses?.length || 0) + 1;
+              const newResponse: FormResponse = {
+                id: Math.random().toString(36).substr(2, 9),
+                formId: fid,
+                timestamp: new Date().toISOString(),
+                answers,
+                serialNumber: sn
+              };
+
+              // CRITICAL: Directly save response to Firebase responses/ node
+              const success = await saveResponse(fid, newResponse);
+              
+              if (success && currentUser) {
+                // If owner is logged in, also update local state for UI sync
+                const updatedForms = currentUser.forms.map(f => {
+                  if (f.id === fid) {
+                    return { ...f, responses: [...f.responses, newResponse] };
+                  }
+                  return f;
+                });
+                handleUpdateForms(updatedForms);
+              }
+              
               return sn;
             }}
           />

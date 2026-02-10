@@ -6,11 +6,6 @@ import { User, Form, FormResponse } from '../types';
 
 const STORAGE_KEY = 'forms_pro_cloud_sync_v1';
 
-/**
- * FORMS Pro Cloud Database Service
- * Robust Offline-First implementation.
- */
-
 export const hashPassword = async (password: string): Promise<string> => {
   try {
     const msgBuffer = new TextEncoder().encode(password);
@@ -23,9 +18,6 @@ export const hashPassword = async (password: string): Promise<string> => {
   }
 };
 
-/**
- * LOCAL PERSISTENCE LAYER
- */
 const getLocalData = (): User[] => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -38,60 +30,76 @@ const getLocalData = (): User[] => {
 const setLocalData = (data: User[]) => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch (e) {
-    // Fail silently
-  }
+  } catch (e) { }
 };
 
-/**
- * CLOUD SYNC OPERATIONS
- */
 export const saveUser = async (user: User) => {
   try {
     const userRef = db.ref(`users/${user.id}`);
     const { forms, ...profile } = user;
     await userRef.set(profile);
-  } catch (err: any) {
-    // Catching PERMISSION_DENIED silently
+  } catch (err: any) { }
+};
+
+export const saveResponse = async (formId: string, response: FormResponse) => {
+  try {
+    const respRef = db.ref(`responses/${formId}/${response.id}`);
+    await respRef.set(response);
+    return true;
+  } catch (e) {
+    console.error("Firebase Response Save Failed:", e);
+    return false;
   }
+};
+
+export const getFormById = async (formId: string): Promise<Form | null> => {
+  try {
+    const formRef = db.ref(`forms/${formId}`);
+    const snapshot = await formRef.once('value');
+    if (snapshot.exists()) {
+      const f = snapshot.val();
+      const respSnapshot = await db.ref(`responses/${f.id}`).once('value');
+      const responses = respSnapshot.exists() ? Object.values(respSnapshot.val()) : [];
+      return {
+        ...f,
+        isPublished: f.published ?? f.isPublished ?? false,
+        responses: responses as FormResponse[],
+        questions: f.questions || [],
+        descriptions: f.descriptions || []
+      } as Form;
+    }
+  } catch (e) {
+    console.error("GetFormById failed:", e);
+  }
+  return null;
 };
 
 export const deleteUserCompletely = async (userId: string, forms: Form[]) => {
   try {
-    // 1. Remove user profile
     await db.ref(`users/${userId}`).remove();
-    
-    // 2. Remove all associated forms
     if (forms && forms.length > 0) {
-      const promises = forms.map(f => db.ref(`forms/${f.id}`).remove());
-      await Promise.all(promises);
-      
-      // 3. Remove all responses for those forms
-      const respPromises = forms.map(f => db.ref(`responses/${f.id}`).remove());
-      await Promise.all(respPromises);
+      await Promise.all(forms.map(f => db.ref(`forms/${f.id}`).remove()));
+      await Promise.all(forms.map(f => db.ref(`responses/${f.id}`).remove()));
     }
-    
-    // 4. Update local storage
     const local = getLocalData();
     const filtered = local.filter(u => u.id !== userId);
     setLocalData(filtered);
   } catch (err) {
-    console.error("Failed to delete user completely from cloud", err);
+    console.error("DeleteUserCompletely failed:", err);
   }
 };
 
 export const saveForm = async (uid: string, form: Form) => {
   try {
     const formRef = db.ref(`forms/${form.id}`);
+    const { responses, ...formWithoutResponses } = form;
     const dbForm = {
-      ...form,
+      ...formWithoutResponses,
       ownerUid: uid,
       published: !!form.isPublished 
     };
     await formRef.set(dbForm);
-  } catch (err: any) {
-    // Silent catch
-  }
+  } catch (err: any) { }
 };
 
 export const getUserForms = async (uid: string): Promise<Form[]> => {
@@ -106,17 +114,13 @@ export const getUserForms = async (uid: string): Promise<Form[]> => {
       return await Promise.all(formsList.map(async (f) => {
         let responses: FormResponse[] = [];
         try {
-          const respRef = db.ref(`responses/${f.id}`);
-          const respSnapshot = await respRef.once('value');
+          const respSnapshot = await db.ref(`responses/${f.id}`).once('value');
           if (respSnapshot.exists()) {
             responses = Object.values(respSnapshot.val());
           }
-        } catch (respErr) {
-          // Individual response read failure
-        }
+        } catch (respErr) { }
         return {
           ...f,
-          // Ensure arrays exist because Firebase omits empty arrays
           questions: f.questions || [],
           descriptions: f.descriptions || [],
           isPublished: f.published ?? f.isPublished ?? false,
@@ -124,48 +128,32 @@ export const getUserForms = async (uid: string): Promise<Form[]> => {
         };
       }));
     }
-  } catch (err) {
-    // Return empty if cloud permission denied
-  }
+  } catch (err) { }
   return [];
 };
 
-/**
- * COMPATIBILITY LAYER FOR App.tsx
- */
-
 export const loadDatabase = async (): Promise<User[]> => {
   const localData = getLocalData();
-  
   try {
     const snapshot = await db.ref('users').once('value');
-    
     if (snapshot.exists()) {
       const usersData = snapshot.val();
       const usersArray = Object.values(usersData) as any[];
-      
       const cloudData = await Promise.all(usersArray.map(async (u) => {
         const forms = await getUserForms(u.id);
         return { ...u, forms: forms || [] };
       }));
-
       if (cloudData.length > 0) {
         setLocalData(cloudData);
         return cloudData;
       }
     }
-  } catch (err: any) {
-    if (err.message?.includes('permission_denied') || err.code === 'PERMISSION_DENIED') {
-      console.info("FORMS Pro: Operating in local-only mode due to cloud restrictions.");
-    }
-  }
-  
+  } catch (err: any) { }
   return localData;
 };
 
 export const saveDatabase = async (users: User[]): Promise<void> => {
   setLocalData(users);
-
   try {
     await Promise.all(users.map(async (user) => {
       await saveUser(user);
@@ -173,13 +161,5 @@ export const saveDatabase = async (users: User[]): Promise<void> => {
         await Promise.all(user.forms.map(form => saveForm(user.id, form)));
       }
     }));
-  } catch (err) {
-    // Fail silently, data is safe locally
-  }
-};
-
-export const getAllUsers = loadDatabase;
-export const findUserByEmail = async (email: string) => {
-  const users = await loadDatabase();
-  return users.find(u => u.email === email) || null;
+  } catch (err) { }
 };
