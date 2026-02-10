@@ -8,7 +8,7 @@ import ResponseDashboard from './components/ResponseDashboard';
 import RecycleBin from './components/RecycleBin';
 import Auth, { hashPassword } from './components/Auth';
 import Settings from './components/Settings';
-import { saveDatabase, loadDatabase } from './services/databaseService';
+import { saveDatabase, loadDatabase, deleteUserCompletely } from './services/databaseService';
 
 const App: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -104,10 +104,34 @@ const App: React.FC = () => {
     }
   }, [currentUser]);
 
+  const handleDeleteUser = useCallback(async (userId: string) => {
+    const userToDelete = users.find(u => u.id === userId);
+    if (!userToDelete) return;
+
+    // Call service to remove from cloud
+    await deleteUserCompletely(userId, userToDelete.forms);
+    
+    // Update local state
+    setUsers(prev => prev.filter(u => u.id !== userId));
+    setCurrentUser(null);
+    setCurrentView('dashboard');
+    window.location.hash = '';
+    alert('Your account and all associated data have been deleted completely.');
+  }, [users]);
+
   const handleUpdateForms = useCallback((updatedForms: Form[]) => {
     if (!currentUser) return;
     handleUpdateUser({ ...currentUser, forms: updatedForms });
   }, [currentUser, handleUpdateUser]);
+
+  const GlobalFooter = () => (
+    <footer className="fixed bottom-2 right-4 z-[9999] pointer-events-none select-none text-right">
+      <div className="text-[7px] md:text-[8px] font-bold text-gray-400/60 uppercase tracking-tight">
+        AjD Group of Company | Designed By Dipesh Jung<br/>
+        Contact:aryaldipesh248@gmail.com
+      </div>
+    </footer>
+  );
 
   if (isLoading) return (
     <div className="min-h-screen bg-[#f3f2f1] flex items-center justify-center">
@@ -123,22 +147,25 @@ const App: React.FC = () => {
 
   if (shouldShowAuth) {
     return (
-      <Auth 
-        onLogin={u => { 
-          const globalStateUser = users.find(gu => gu.id === u.id) || u;
-          setCurrentUser(globalStateUser); 
-          setCurrentView('dashboard'); 
-          window.location.hash = ''; 
-        }} 
-        users={users} 
-        onRegister={u => { 
-          setUsers(prev => [...prev, u]); 
-          setCurrentUser(u); 
-          setIsDirty(true);
-          setCurrentView('dashboard'); 
-        }} 
-        onUpdateUser={handleUpdateUser} 
-      />
+      <>
+        <Auth 
+          onLogin={u => { 
+            const globalStateUser = users.find(gu => gu.id === u.id) || u;
+            setCurrentUser(globalStateUser); 
+            setCurrentView('dashboard'); 
+            window.location.hash = ''; 
+          }} 
+          users={users} 
+          onRegister={u => { 
+            setUsers(prev => [...prev, u]); 
+            setCurrentUser(u); 
+            setIsDirty(true);
+            setCurrentView('dashboard'); 
+          }} 
+          onUpdateUser={handleUpdateUser} 
+        />
+        <GlobalFooter />
+      </>
     );
   }
 
@@ -162,7 +189,7 @@ const App: React.FC = () => {
         </header>
       )}
 
-      <main className="flex-grow">
+      <main className="flex-grow pb-12">
         {currentView === 'dashboard' && currentUser && (
           <Dashboard 
             forms={currentUser.forms.filter(f => !f.deletedAt)} 
@@ -174,7 +201,7 @@ const App: React.FC = () => {
                 questions: [], 
                 createdAt: new Date().toISOString(), 
                 responses: [], 
-                isPublished: true // Default to true so links work out-of-the-box
+                isPublished: true 
               };
               handleUpdateForms([...currentUser.forms, f]);
               setActiveFormId(f.id); 
@@ -233,8 +260,10 @@ const App: React.FC = () => {
           <RecycleBin forms={currentUser.forms.filter(f => f.deletedAt)} archivedResponses={currentUser.forms.flatMap(f => f.archivedResponseSets || [])} onRestore={id => handleUpdateForms(currentUser.forms.map(f => f.id === id ? {...f, deletedAt: undefined} : f))} onPermanentDelete={id => handleUpdateForms(currentUser.forms.filter(f => f.id !== id))} onRestoreArchive={(fid, aid) => { const f = currentUser.forms.find(x => x.id === fid); const set = f?.archivedResponseSets?.find(s => s.id === aid); if (set) handleUpdateForms(currentUser.forms.map(x => x.id === fid ? {...x, responses: [...x.responses, ...set.responses], archivedResponseSets: x.archivedResponseSets?.filter(s => s.id !== aid)} : x)); }} onDeleteArchivePermanently={(fid, aid) => handleUpdateForms(currentUser.forms.map(x => x.id === fid ? {...x, archivedResponseSets: x.archivedResponseSets?.filter(s => s.id !== aid)} : x))} onBack={() => setCurrentView('dashboard')} />
         )}
 
-        {currentView === 'settings' && currentUser && <Settings user={currentUser} onUpdate={handleUpdateUser} onBack={() => setCurrentView('dashboard')} />}
+        {currentView === 'settings' && currentUser && <Settings user={currentUser} onUpdate={handleUpdateUser} onDeleteAccount={handleDeleteUser} onBack={() => setCurrentView('dashboard')} />}
       </main>
+
+      <GlobalFooter />
     </div>
   );
 };

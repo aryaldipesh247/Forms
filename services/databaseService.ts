@@ -56,6 +56,30 @@ export const saveUser = async (user: User) => {
   }
 };
 
+export const deleteUserCompletely = async (userId: string, forms: Form[]) => {
+  try {
+    // 1. Remove user profile
+    await db.ref(`users/${userId}`).remove();
+    
+    // 2. Remove all associated forms
+    if (forms && forms.length > 0) {
+      const promises = forms.map(f => db.ref(`forms/${f.id}`).remove());
+      await Promise.all(promises);
+      
+      // 3. Remove all responses for those forms
+      const respPromises = forms.map(f => db.ref(`responses/${f.id}`).remove());
+      await Promise.all(respPromises);
+    }
+    
+    // 4. Update local storage
+    const local = getLocalData();
+    const filtered = local.filter(u => u.id !== userId);
+    setLocalData(filtered);
+  } catch (err) {
+    console.error("Failed to delete user completely from cloud", err);
+  }
+};
+
 export const saveForm = async (uid: string, form: Form) => {
   try {
     const formRef = db.ref(`forms/${form.id}`);
