@@ -52,19 +52,30 @@ export const saveResponse = async (formId: string, response: FormResponse) => {
   }
 };
 
+/**
+ * FETCH SINGLE FORM (Used for Real-time QR/Deep Links)
+ */
 export const getFormById = async (formId: string): Promise<Form | null> => {
   try {
     const formRef = db.ref(`forms/${formId}`);
     const snapshot = await formRef.once('value');
+    
     if (snapshot.exists()) {
       const f = snapshot.val();
+      
+      // Fetch responses separately from the dedicated response node
       const respSnapshot = await db.ref(`responses/${f.id}`).once('value');
       const responses = respSnapshot.exists() ? Object.values(respSnapshot.val()) : [];
+      
+      // Deep Rehydration: Ensure arrays exist because Firebase omits them if empty
       return {
         ...f,
         isPublished: f.published ?? f.isPublished ?? false,
         responses: responses as FormResponse[],
-        questions: f.questions || [],
+        questions: (f.questions || []).map((q: any) => ({
+          ...q,
+          options: q.options || [] // Ensure choices are always an array
+        })),
         descriptions: f.descriptions || []
       } as Form;
     }
@@ -84,14 +95,13 @@ export const deleteUserCompletely = async (userId: string, forms: Form[]) => {
     const local = getLocalData();
     const filtered = local.filter(u => u.id !== userId);
     setLocalData(filtered);
-  } catch (err) {
-    console.error("DeleteUserCompletely failed:", err);
-  }
+  } catch (err) { }
 };
 
 export const saveForm = async (uid: string, form: Form) => {
   try {
     const formRef = db.ref(`forms/${form.id}`);
+    // Extract responses to keep the main form object light; responses live in their own node
     const { responses, ...formWithoutResponses } = form;
     const dbForm = {
       ...formWithoutResponses,
@@ -121,7 +131,7 @@ export const getUserForms = async (uid: string): Promise<Form[]> => {
         } catch (respErr) { }
         return {
           ...f,
-          questions: f.questions || [],
+          questions: (f.questions || []).map((q: any) => ({ ...q, options: q.options || [] })),
           descriptions: f.descriptions || [],
           isPublished: f.published ?? f.isPublished ?? false,
           responses: responses || []

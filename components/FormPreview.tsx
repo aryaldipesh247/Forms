@@ -61,7 +61,7 @@ interface FormPreviewProps {
   form: Form | null;
   isGuest?: boolean;
   onBack: () => void;
-  onSubmit: (answers: Record<string, any>) => number;
+  onSubmit: (answers: Record<string, any>) => Promise<number>;
 }
 
 const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubmit }) => {
@@ -76,37 +76,58 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
 
   const currentQuestions = useMemo(() => {
     if (!form || !form.questions) return [];
+    
     const visible: Question[] = [];
+    const questions = form.questions;
     let curIdx = 0;
-    while(curIdx < form.questions.length) {
-      const q = form.questions[curIdx];
+
+    // We use a safe iteration to handle branching or simple linear progression
+    while (curIdx < questions.length) {
+      const q = questions[curIdx];
       visible.push(q);
+      
       const ans = answers[q.id];
       let nextId: string | 'next' | 'end' = 'next';
+
       if (q.enableBranching) {
         if (q.type === QuestionType.CHOICE && ans) {
           const selectedOpt = q.options?.find(o => o.text === ans);
-          if (selectedOpt?.branching) nextId = selectedOpt.branching.nextQuestionId;
+          if (selectedOpt?.branching) {
+            nextId = selectedOpt.branching.nextQuestionId;
+          }
         } else if (q.branching) {
           nextId = q.branching.nextQuestionId;
         }
       }
+
       if (nextId === 'end') break;
-      if (nextId === 'next') { curIdx++; continue; }
-      const targetIdx = form.questions.findIndex(fq => fq.id === nextId);
-      curIdx = targetIdx > curIdx ? targetIdx : curIdx + 1;
+      if (nextId === 'next' || !nextId) {
+        curIdx++;
+      } else {
+        const targetIdx = questions.findIndex(fq => fq.id === nextId);
+        // Safety: If target is not found or is behind current, just go to next to prevent infinite loops or skips
+        if (targetIdx !== -1 && targetIdx > curIdx) {
+          curIdx = targetIdx;
+        } else {
+          curIdx++;
+        }
+      }
     }
     return visible;
   }, [form, answers]);
 
   const handleSubmit = useCallback(async () => {
     setIsSubmitting(true);
-    await new Promise(r => setTimeout(r, 600));
-    const s = onSubmit(answers);
-    setTicketNumber(s);
-    setSubmitted(true);
-    setIsSubmitting(false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    try {
+      const s = await onSubmit(answers);
+      setTicketNumber(s);
+      setSubmitted(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e) {
+      alert("Submission failed. Please check your connection.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }, [answers, onSubmit]);
 
   if (!form) {
@@ -114,15 +135,14 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
       <div className="min-h-screen flex items-center justify-center bg-[#f3f2f1] p-6">
         <div className="bg-white p-12 rounded-2xl shadow-2xl text-center max-w-sm border">
           <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">⚠️</div>
-          <h2 className="text-3xl font-black mb-3">Form Not Found</h2>
-          <p className="text-gray-400 text-xs mb-8">This form may have been removed or the link is invalid.</p>
-          <button onClick={onBack} className="w-full bg-[#008272] text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl">Go Home</button>
+          <h2 className="text-3xl font-black mb-3">Loading Form...</h2>
+          <p className="text-gray-400 text-xs mb-8">Fetching the latest version from the cloud.</p>
+          <div className="w-8 h-8 border-4 border-[#008272] border-t-transparent rounded-full animate-spin mx-auto"></div>
         </div>
       </div>
     );
   }
 
-  // Check BOTH key names to ensure compatibility with Firebase and local state
   const isPublished = form.isPublished ?? (form as any).published ?? false;
 
   if (isGuest && !isPublished) {
@@ -140,8 +160,6 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
              <button onClick={() => window.location.reload()} className="w-full bg-[#008272] text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg">Refresh Status</button>
              <button onClick={onBack} className="text-[9px] font-black uppercase tracking-widest text-[#008272] hover:underline">Go Home</button>
           </div>
-          
-          <div className="mt-12 text-[10px] font-black text-gray-300 uppercase tracking-[0.3em]">FORMS Pro Secure Protocol</div>
         </div>
       </div>
     );

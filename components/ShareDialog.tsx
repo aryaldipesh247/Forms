@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useMemo } from 'react';
 
 interface ShareDialogProps {
@@ -10,9 +11,12 @@ const ShareDialog: React.FC<ShareDialogProps> = ({ formId, isPublished, onClose 
   const [copied, setCopied] = useState(false);
   
   const shareUrl = useMemo(() => {
-    const base = window.location.origin + window.location.pathname;
-    const cleanBase = base.endsWith('/') ? base : base + '/';
-    return `${cleanBase}#preview/${formId}`;
+    // Standardizing the base URL to prevent broken hash links
+    const origin = window.location.origin;
+    const path = window.location.pathname.endsWith('/') 
+      ? window.location.pathname 
+      : window.location.pathname + '/';
+    return `${origin}${path}#preview/${formId}`;
   }, [formId]);
 
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(shareUrl)}&bgcolor=ffffff&color=008272`;
@@ -96,7 +100,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({ formId, isPublished, onClose 
         </div>
         
         <div className="mt-12 pt-8 border-t border-gray-50 text-center">
-          <p className="text-[10px] font-black text-gray-200 uppercase tracking-[0.6em]">Secure Protocol | FORMS Pro</p>
+          <p className="text-[10px] font-black text-gray-200 uppercase tracking-[0.6em]">Secure Protocol | Forms PRO</p>
         </div>
       </div>
     </div>

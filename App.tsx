@@ -20,24 +20,29 @@ const App: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
 
+  const fetchDeepLink = useCallback(async (id: string) => {
+    setIsSyncing(true);
+    const cloudForm = await getFormById(id);
+    if (cloudForm) {
+      setDeepLinkForm(cloudForm);
+    }
+    setIsSyncing(false);
+  }, []);
+
   const handleHashChange = useCallback(async () => {
     const hash = window.location.hash;
     if (hash.startsWith('#preview/')) {
       const id = hash.replace('#preview/', '');
       setActiveFormId(id);
       setCurrentView('preview');
-      
-      // If we don't have the form locally, fetch it immediately from the cloud
-      const localForm = users.flatMap(u => u.forms).find(f => f.id === id);
-      if (!localForm) {
-        const cloudForm = await getFormById(id);
-        if (cloudForm) setDeepLinkForm(cloudForm);
-      }
+      // Always fetch fresh from cloud for preview links
+      await fetchDeepLink(id);
     } else if (currentView === 'preview') {
       setCurrentView('dashboard');
       setDeepLinkForm(null);
+      setActiveFormId(null);
     }
-  }, [currentView, users]);
+  }, [currentView, fetchDeepLink]);
 
   useEffect(() => {
     window.addEventListener('hashchange', handleHashChange);
@@ -78,8 +83,7 @@ const App: React.FC = () => {
         const id = hash.replace('#preview/', '');
         setActiveFormId(id);
         setCurrentView('preview');
-        const cloudForm = await getFormById(id);
-        if (cloudForm) setDeepLinkForm(cloudForm);
+        await fetchDeepLink(id);
       }
     };
     init();
@@ -100,10 +104,14 @@ const App: React.FC = () => {
 
   const activeForm = useMemo(() => {
     if (!activeFormId) return null;
-    // Prefer deep linked form for guest previews, otherwise look in user local data
+    // Prefer the deep linked form (fetched directly from cloud) for previews
+    if (currentView === 'preview' && deepLinkForm && deepLinkForm.id === activeFormId) {
+      return deepLinkForm;
+    }
+    // Fallback to local user forms
     const userForm = users.flatMap(u => u.forms).find(f => f.id === activeFormId);
-    return deepLinkForm || userForm || null;
-  }, [users, activeFormId, deepLinkForm]);
+    return userForm || deepLinkForm || null;
+  }, [users, activeFormId, deepLinkForm, currentView]);
 
   const handleUpdateUser = useCallback((updatedUser: User) => {
     setUsers(prev => {
@@ -246,7 +254,6 @@ const App: React.FC = () => {
               const fid = activeFormId || activeForm?.id;
               if (!fid) return 0;
               
-              // Calculate next serial number locally or via activeForm responses
               const sn = (activeForm?.responses?.length || 0) + 1;
               const newResponse: FormResponse = {
                 id: Math.random().toString(36).substr(2, 9),
@@ -256,11 +263,9 @@ const App: React.FC = () => {
                 serialNumber: sn
               };
 
-              // CRITICAL: Directly save response to Firebase responses/ node
               const success = await saveResponse(fid, newResponse);
               
               if (success && currentUser) {
-                // If owner is logged in, also update local state for UI sync
                 const updatedForms = currentUser.forms.map(f => {
                   if (f.id === fid) {
                     return { ...f, responses: [...f.responses, newResponse] };
