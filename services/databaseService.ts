@@ -63,20 +63,22 @@ export const getFormById = async (formId: string): Promise<Form | null> => {
     if (snapshot.exists()) {
       const f = snapshot.val();
       
-      // Fetch responses separately from the dedicated response node
       const respSnapshot = await db.ref(`responses/${f.id}`).once('value');
       const responses = respSnapshot.exists() ? Object.values(respSnapshot.val()) : [];
       
-      // Deep Rehydration: Ensure arrays exist because Firebase omits them if empty
+      // Strict rehydration: Ensure ALL questions are included and valid
+      const rawQuestions = f.questions || [];
+      const cleanedQuestions = Array.isArray(rawQuestions) ? rawQuestions : Object.values(rawQuestions);
+
       return {
         ...f,
         isPublished: f.published ?? f.isPublished ?? false,
         responses: responses as FormResponse[],
-        questions: (f.questions || []).map((q: any) => ({
+        questions: cleanedQuestions.map((q: any) => ({
           ...q,
-          options: q.options || [] // Ensure choices are always an array
+          options: q.options ? (Array.isArray(q.options) ? q.options : Object.values(q.options)) : []
         })),
-        descriptions: f.descriptions || []
+        descriptions: f.descriptions ? (Array.isArray(f.descriptions) ? f.descriptions : Object.values(f.descriptions)) : []
       } as Form;
     }
   } catch (e) {
@@ -101,7 +103,6 @@ export const deleteUserCompletely = async (userId: string, forms: Form[]) => {
 export const saveForm = async (uid: string, form: Form) => {
   try {
     const formRef = db.ref(`forms/${form.id}`);
-    // Extract responses to keep the main form object light; responses live in their own node
     const { responses, ...formWithoutResponses } = form;
     const dbForm = {
       ...formWithoutResponses,
@@ -129,10 +130,17 @@ export const getUserForms = async (uid: string): Promise<Form[]> => {
             responses = Object.values(respSnapshot.val());
           }
         } catch (respErr) { }
+        
+        const qList = f.questions ? (Array.isArray(f.questions) ? f.questions : Object.values(f.questions)) : [];
+        const dList = f.descriptions ? (Array.isArray(f.descriptions) ? f.descriptions : Object.values(f.descriptions)) : [];
+
         return {
           ...f,
-          questions: (f.questions || []).map((q: any) => ({ ...q, options: q.options || [] })),
-          descriptions: f.descriptions || [],
+          questions: qList.map((q: any) => ({ 
+            ...q, 
+            options: q.options ? (Array.isArray(q.options) ? q.options : Object.values(q.options)) : [] 
+          })),
+          descriptions: dList,
           isPublished: f.published ?? f.isPublished ?? false,
           responses: responses || []
         };
