@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Form } from '../types';
 
@@ -17,7 +16,7 @@ const Dashboard: React.FC<DashboardProps> = ({ forms, onCreate, onSelect, onDele
     <div className="max-w-7xl mx-auto px-6 py-10">
       <div className="mb-10 p-10 bg-gradient-to-br from-[#008272] to-[#005a4e] rounded-md text-white shadow-lg relative overflow-hidden">
         <div className="relative z-10 max-w-2xl">
-           <h1 className="text-4xl font-black mb-2 tracking-tight">Welcome to Forms PRO</h1>
+           <h1 className="text-4xl font-black mb-2 tracking-tight">Welcome to FORMS Pro</h1>
            <p className="text-lg opacity-90 font-medium">Create engaging surveys and quizzes with intelligent AI tools and professional themes.</p>
            <div className="flex gap-4 mt-8">
               <button 
@@ -41,7 +40,7 @@ const Dashboard: React.FC<DashboardProps> = ({ forms, onCreate, onSelect, onDele
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6 border-b pb-6 border-gray-200">
         <div>
           <h2 className="text-xl font-bold text-[#323130] flex items-center gap-3">
-            Recent Forms PRO documents
+            Recent FORMS Pro documents
           </h2>
           <p className="text-[10px] text-[#a19f9d] font-black uppercase tracking-widest mt-1">Manage your active collection</p>
         </div>

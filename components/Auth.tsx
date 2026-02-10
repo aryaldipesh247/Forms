@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { User } from '../types';
 
@@ -193,6 +192,16 @@ const Auth: React.FC<AuthProps> = ({ onLogin, users, onRegister, onUpdateUser })
     }
   };
 
+  const BackToLoginLink = () => (
+    <button 
+      type="button" 
+      onClick={() => { setMode('login'); resetForm(); }} 
+      className="w-full text-xs font-bold text-[#008272] hover:underline text-center block mt-4 uppercase tracking-widest"
+    >
+      Back to Login
+    </button>
+  );
+
   return (
     <div className="min-h-screen bg-[#f3f2f1] flex flex-col items-center justify-center p-4">
       <div className="max-w-5xl w-full flex flex-col md:flex-row items-center justify-center gap-12 lg:gap-24">
@@ -201,9 +210,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin, users, onRegister, onUpdateUser })
             <div className="w-16 h-16 bg-[#008272] flex items-center justify-center rounded shadow-lg">
                 <svg className="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M19,3H5C3.89,3 3,3.89 3,5V19C3,20.11 3.89,21 5,21H19C20.11,21 21,20.11 21,19V5C21,3.89 20.11,3 19,3M19,19H5V5H19V19M17,17H7V15H17V17M17,13H7V11H17V13M17,9H7V7H17V9Z"/></svg>
             </div>
-            <h1 className="text-[#008272] text-6xl font-bold tracking-tight">Forms PRO</h1>
+            <h1 className="text-[#008272] text-6xl font-bold tracking-tight">FORMS Pro</h1>
           </div>
-          <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Official Forms PRO Multi-Device Survey Engine</p>
+          <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Official FORMS Pro Multi-Device Survey Engine</p>
         </div>
 
         <div className="md:w-[420px] w-full bg-white/85 backdrop-blur-md p-8 rounded-md shadow-2xl border border-[#edebe9]">
@@ -247,11 +256,10 @@ const Auth: React.FC<AuthProps> = ({ onLogin, users, onRegister, onUpdateUser })
               <button disabled={isProcessing} type="submit" className="w-full bg-[#008272] text-white py-3.5 rounded font-bold text-lg hover:bg-[#006a5d] mt-2 transition-all active:scale-95 shadow-md disabled:opacity-50">
                 {isProcessing ? 'Creating Account...' : 'Create Account'}
               </button>
-              <button type="button" onClick={() => { setMode('login'); resetForm(); }} className="w-full text-xs font-bold text-[#008272] hover:underline text-center block mt-2 uppercase tracking-widest">Back to Login</button>
+              <BackToLoginLink />
             </form>
           )}
 
-          {/* Forgot Password steps remain largely same, just with isProcessing handling */}
           {mode === 'forgot_1' && (
             <form onSubmit={handleForgotStep1} className="space-y-4">
               <h2 className="text-xl font-bold text-black">Reset Password</h2>
@@ -260,6 +268,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, users, onRegister, onUpdateUser })
                 <button type="button" onClick={() => { setMode('login'); resetForm(); }} className="flex-1 bg-gray-100/85 py-2.5 rounded font-bold text-xs text-gray-600 hover:bg-gray-200 transition-all">Cancel</button>
                 <button type="submit" className="flex-1 bg-[#008272] text-white py-2.5 rounded font-bold text-xs hover:bg-[#006a5d] transition-all">Continue</button>
               </div>
+              <BackToLoginLink />
             </form>
           )}
 
@@ -268,6 +277,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, users, onRegister, onUpdateUser })
               <h2 className="text-xl font-bold text-black">Verify PIN</h2>
               <InputField label="4-Digit PIN" type="text" value={pin} onChange={setPin} placeholder="••••" maxLength={4} />
               <button type="submit" className="w-full bg-[#008272] text-white py-3 rounded font-bold text-sm hover:bg-[#006a5d] transition-all">Verify PIN</button>
+              <BackToLoginLink />
             </form>
           )}
 
@@ -277,6 +287,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, users, onRegister, onUpdateUser })
               <InputField label="New Password" isPassword={true} value={password} onChange={setPassword} placeholder="••••••••" />
               <InputField label="Retype" isPassword={true} value={confirmPassword} onChange={setConfirmPassword} placeholder="••••••••" />
               <button type="submit" className="w-full bg-[#008272] text-white py-3 rounded font-bold text-sm hover:bg-[#006a5d] transition-all">Change Password</button>
+              <BackToLoginLink />
             </form>
           )}
         </div>

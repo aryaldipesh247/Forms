@@ -1,4 +1,3 @@
-
 import { User } from '../types';
 
 const STORAGE_KEY = 'forms_pro_cloud_sync_v1';
@@ -6,15 +5,17 @@ const STORAGE_KEY = 'forms_pro_cloud_sync_v1';
 export const saveUser = async (user: User): Promise<void> => {
   try {
     const allUsers = await getAllUsers();
-    const existingIndex = allUsers.findIndex(u => u.email === user.email);
+    const existingIndex = allUsers.findIndex(u => u.id === user.id || u.email === user.email);
     
+    let updatedUsers;
     if (existingIndex > -1) {
-      allUsers[existingIndex] = user;
+      updatedUsers = [...allUsers];
+      updatedUsers[existingIndex] = user;
     } else {
-      allUsers.push(user);
+      updatedUsers = [...allUsers, user];
     }
     
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(allUsers));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUsers));
   } catch (e) {
     console.error("Storage save failed", e);
   }

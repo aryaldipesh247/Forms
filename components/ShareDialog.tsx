@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useMemo } from 'react';
 
 interface ShareDialogProps {
@@ -10,18 +9,10 @@ interface ShareDialogProps {
 const ShareDialog: React.FC<ShareDialogProps> = ({ formId, isPublished, onClose }) => {
   const [copied, setCopied] = useState(false);
   
-  // Generates a robust absolute URL using the native URL API
   const shareUrl = useMemo(() => {
-    try {
-      // Use window.location.href as a base, but remove existing hashes or queries
-      const url = new URL(window.location.origin + window.location.pathname);
-      url.hash = `#preview/${formId}`;
-      return url.toString();
-    } catch (e) {
-      // Fallback for extreme cases
-      const base = window.location.origin + window.location.pathname;
-      return `${base.replace(/\/$/, '')}/#preview/${formId}`;
-    }
+    const base = window.location.origin + window.location.pathname;
+    const cleanBase = base.endsWith('/') ? base : base + '/';
+    return `${cleanBase}#preview/${formId}`;
   }, [formId]);
 
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(shareUrl)}&bgcolor=ffffff&color=008272`;
@@ -35,11 +26,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({ formId, isPublished, onClose 
         textArea.value = shareUrl;
         document.body.appendChild(textArea);
         textArea.select();
-        try {
-          document.execCommand('copy');
-        } catch (err) {
-          console.error('Fallback copy failed', err);
-        }
+        document.execCommand('copy');
         document.body.removeChild(textArea);
       }
       setCopied(true);
@@ -109,7 +96,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({ formId, isPublished, onClose 
         </div>
         
         <div className="mt-12 pt-8 border-t border-gray-50 text-center">
-          <p className="text-[10px] font-black text-gray-200 uppercase tracking-[0.6em]">Secure Protocol | Forms PRO</p>
+          <p className="text-[10px] font-black text-gray-200 uppercase tracking-[0.6em]">Secure Protocol | FORMS Pro</p>
         </div>
       </div>
     </div>

@@ -1,7 +1,6 @@
-
 {
   "name": "forms-clone-pro",
-  "description": "Forms PRO: Professional data collection suite with Gemini AI integration",
+  "description": "FORMS Pro: Professional data collection suite with Gemini AI integration",
   "private": true,
   "version": "1.0.0",
   "type": "module",

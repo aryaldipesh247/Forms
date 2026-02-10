@@ -38,7 +38,7 @@ export const generateQuestionsFromAI = async (topic: string) => {
 
   try {
     const text = response.text || "[]";
-    const raw = JSON.parse(text);
+    const raw = JSON.parse(text.trim());
     return raw.map((q: any) => ({
       ...q,
       id: Math.random().toString(36).substr(2, 9),
@@ -74,7 +74,8 @@ export const suggestThemeFromAI = async (title: string, description: string): Pr
   });
 
   try {
-    const res = JSON.parse(response.text || "{}");
+    const text = response.text || "{}";
+    const res = JSON.parse(text.trim());
     return {
       primaryColor: res.primaryColor || '#008272',
       backgroundColor: '#f3f2f1',
@@ -90,7 +91,9 @@ export const generateBackgroundImageAI = async (prompt: string): Promise<string 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
-      contents: [{ parts: [{ text: `Create a professional, high-quality, abstract or minimalist background suitable for a professional survey form. Theme: ${prompt}. Ensure the image is clean and not too distracting for text overlay.` }] }],
+      contents: {
+        parts: [{ text: `Create a professional, high-quality, abstract or minimalist background suitable for a professional survey form. Theme: ${prompt}.` }]
+      },
       config: {
         imageConfig: {
           aspectRatio: "16:9"
@@ -98,11 +101,12 @@ export const generateBackgroundImageAI = async (prompt: string): Promise<string 
       }
     });
 
-    for (const part of response.candidates?.[0]?.content?.parts || []) {
-      if (part.inlineData) {
-        const base64 = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-        // Upload AI generated base64 to Cloudinary to keep form metadata small
-        return await uploadImageToCloudinary(base64);
+    if (response.candidates && response.candidates[0] && response.candidates[0].content.parts) {
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+          const base64 = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+          return await uploadImageToCloudinary(base64);
+        }
       }
     }
     return null;
@@ -123,12 +127,7 @@ export const generateInsightsFromAI = async (form: Form): Promise<string> => {
   Questions: ${form.questions.map(q => q.title).join(', ')}
   Responses: ${JSON.stringify(simplifiedResponses)}
   
-  Provide a professional summary with:
-  1. A 'Key Takeaways' section.
-  2. A 'Sentiment Analysis' (Positive/Neutral/Negative).
-  3. Three 'Actionable Recommendations'.
-  
-  Use Markdown formatting for a clean look. Keep it concise.`;
+  Provide a professional summary with Key Takeaways and Recommendations. Use Markdown.`;
 
   try {
     const response = await ai.models.generateContent({
@@ -138,6 +137,6 @@ export const generateInsightsFromAI = async (form: Form): Promise<string> => {
     return response.text || "No insights could be generated at this time.";
   } catch (e) {
     console.error("AI Insights failed", e);
-    return "Failed to connect to the AI analyst. Please try again later.";
+    return "Failed to connect to the AI analyst.";
   }
 };

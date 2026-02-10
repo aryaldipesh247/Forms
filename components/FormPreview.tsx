@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useCallback } from 'react';
 import { Form, QuestionType, Question } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -129,7 +128,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
           <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-8 text-3xl">🚫</div>
           <h2 className="text-3xl font-black mb-4">Form Restricted</h2>
           <p className="text-gray-400 text-xs uppercase tracking-widest mb-12">This form is currently in draft mode.</p>
-          <div className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Forms PRO Secure Protocol</div>
+          <div className="text-[10px] font-black text-gray-300 uppercase tracking-widest">FORMS Pro Secure Protocol</div>
         </div>
       </div>
     );
@@ -164,7 +163,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
         {!isGuest ? (
           <button onClick={onBack} className="text-[10px] font-black uppercase tracking-widest text-[#008272] hover:opacity-70">← Back to Editor</button>
         ) : (
-          <div className="flex items-center gap-2 font-black text-[#008272] text-[10px] tracking-widest uppercase">Forms PRO | Respondent Interface</div>
+          <div className="flex items-center gap-2 font-black text-[#008272] text-[10px] tracking-widest uppercase">FORMS Pro | Respondent Interface</div>
         )}
         <div className="w-2 h-2 rounded-full bg-[#008272] animate-pulse"></div>
       </nav>

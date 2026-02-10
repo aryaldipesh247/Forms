@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Form, View, FormResponse, User, ResponseArchive } from './types';
 import Dashboard from './components/Dashboard';
@@ -114,7 +113,7 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-[#f3f2f1] flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
         <div className="w-12 h-12 border-4 border-[#008272] border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#008272]">Forms PRO Syncing...</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#008272]">FORMS Pro Syncing...</p>
       </div>
     </div>
   );
@@ -149,7 +148,7 @@ const App: React.FC = () => {
       {currentView !== 'preview' && (
         <header className="bg-[#008272] px-6 h-12 flex justify-between items-center z-[100] text-white shadow-sm sticky top-0 transition-all">
           <div className="flex items-center gap-3">
-            <span className="font-bold text-lg cursor-pointer hover:opacity-80 transition-opacity" onClick={() => { setCurrentView('dashboard'); window.location.hash = ''; setActiveFormId(null); }}>Forms PRO</span>
+            <span className="font-bold text-lg cursor-pointer hover:opacity-80 transition-opacity" onClick={() => { setCurrentView('dashboard'); window.location.hash = ''; setActiveFormId(null); }}>FORMS Pro</span>
             {isSyncing && (
               <div className="flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full animate-pulse">
                 <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
