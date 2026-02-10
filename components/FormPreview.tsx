@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback } from 'react';
 import { Form, QuestionType, Question } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -74,7 +75,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
   }, []);
 
   const currentQuestions = useMemo(() => {
-    if (!form) return [];
+    if (!form || !form.questions) return [];
     const visible: Question[] = [];
     let curIdx = 0;
     while(curIdx < form.questions.length) {
@@ -121,14 +122,26 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
     );
   }
 
-  if (isGuest && !form.isPublished) {
+  // Check BOTH key names to ensure compatibility with Firebase and local state
+  const isPublished = form.isPublished ?? (form as any).published ?? false;
+
+  if (isGuest && !isPublished) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-[#f3f2f1]">
         <div className="max-w-md w-full bg-white p-12 rounded-2xl shadow-2xl text-center border-t-[14px] border-red-500">
           <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-8 text-3xl">🚫</div>
           <h2 className="text-3xl font-black mb-4">Form Restricted</h2>
-          <p className="text-gray-400 text-xs uppercase tracking-widest mb-12">This form is currently in draft mode.</p>
-          <div className="text-[10px] font-black text-gray-300 uppercase tracking-widest">FORMS Pro Secure Protocol</div>
+          <p className="text-gray-500 text-sm font-bold mb-2">This form is currently in "Draft" mode.</p>
+          <p className="text-gray-400 text-[10px] uppercase tracking-widest mb-10 leading-relaxed">
+            The owner must click "Publish" in the editor before respondents can access this content.
+          </p>
+          
+          <div className="flex flex-col gap-3">
+             <button onClick={() => window.location.reload()} className="w-full bg-[#008272] text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg">Refresh Status</button>
+             <button onClick={onBack} className="text-[9px] font-black uppercase tracking-widest text-[#008272] hover:underline">Go Home</button>
+          </div>
+          
+          <div className="mt-12 text-[10px] font-black text-gray-300 uppercase tracking-[0.3em]">FORMS Pro Secure Protocol</div>
         </div>
       </div>
     );
@@ -177,7 +190,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
           )}
           <h1 className="text-4xl font-black text-[#323130] mb-6 tracking-tighter leading-tight">{form.title}</h1>
           <div className="space-y-3">
-            {form.descriptions.map(d => (
+            {(form.descriptions ?? []).map(d => (
               <p key={d.id} className={`text-gray-500 font-medium leading-relaxed ${d.formatting?.italic ? 'italic' : ''}`} style={{ textAlign: d.formatting?.textAlign || 'left', fontSize: d.formatting?.fontSize === 'large' ? '1.2rem' : '1rem' }}>{d.text}</p>
             ))}
           </div>

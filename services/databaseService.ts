@@ -1,3 +1,4 @@
+
 import firebase from "firebase/compat/app";
 import "firebase/compat/database";
 import { db } from "./firebase";
@@ -51,7 +52,7 @@ export const saveUser = async (user: User) => {
     const { forms, ...profile } = user;
     await userRef.set(profile);
   } catch (err: any) {
-    // Catching PERMISSION_DENIED silently to avoid console clutter for end users
+    // Catching PERMISSION_DENIED silently
   }
 };
 
@@ -91,8 +92,11 @@ export const getUserForms = async (uid: string): Promise<Form[]> => {
         }
         return {
           ...f,
-          isPublished: f.published ?? f.isPublished,
-          responses
+          // Ensure arrays exist because Firebase omits empty arrays
+          questions: f.questions || [],
+          descriptions: f.descriptions || [],
+          isPublished: f.published ?? f.isPublished ?? false,
+          responses: responses || []
         };
       }));
     }
@@ -104,14 +108,12 @@ export const getUserForms = async (uid: string): Promise<Form[]> => {
 
 /**
  * COMPATIBILITY LAYER FOR App.tsx
- * Defaults to Local Storage if Cloud is restricted.
  */
 
 export const loadDatabase = async (): Promise<User[]> => {
   const localData = getLocalData();
   
   try {
-    // Attempt Firebase Load with timeout/abort simulation
     const snapshot = await db.ref('users').once('value');
     
     if (snapshot.exists()) {
@@ -120,7 +122,7 @@ export const loadDatabase = async (): Promise<User[]> => {
       
       const cloudData = await Promise.all(usersArray.map(async (u) => {
         const forms = await getUserForms(u.id);
-        return { ...u, forms };
+        return { ...u, forms: forms || [] };
       }));
 
       if (cloudData.length > 0) {
@@ -129,10 +131,8 @@ export const loadDatabase = async (): Promise<User[]> => {
       }
     }
   } catch (err: any) {
-    // If permission is denied, we just use local data.
-    // We log a clean, helpful tip for the developer.
     if (err.message?.includes('permission_denied') || err.code === 'PERMISSION_DENIED') {
-      console.info("FORMS Pro: Cloud sync is restricted by current Firebase rules. Operating in local-only mode.");
+      console.info("FORMS Pro: Operating in local-only mode due to cloud restrictions.");
     }
   }
   
@@ -140,11 +140,9 @@ export const loadDatabase = async (): Promise<User[]> => {
 };
 
 export const saveDatabase = async (users: User[]): Promise<void> => {
-  // Always update local storage first
   setLocalData(users);
 
   try {
-    // Background sync
     await Promise.all(users.map(async (user) => {
       await saveUser(user);
       if (user.forms) {
@@ -152,7 +150,7 @@ export const saveDatabase = async (users: User[]): Promise<void> => {
       }
     }));
   } catch (err) {
-    // Fail silently, data is safe in local storage
+    // Fail silently, data is safe locally
   }
 };
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Form, View, FormResponse, User, ResponseArchive } from './types';
 import Dashboard from './components/Dashboard';
@@ -34,7 +35,7 @@ const App: React.FC = () => {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [handleHashChange]);
 
-  // Initial load: Fetch global state from Cloudinary
+  // Initial load
   useEffect(() => {
     const init = async () => {
       const loadedUsers = await loadDatabase();
@@ -71,7 +72,7 @@ const App: React.FC = () => {
     init();
   }, []);
 
-  // Sync cycle: Triggers whenever users are updated
+  // Sync cycle
   useEffect(() => {
     if (!isLoading && isDirty && users.length > 0) {
       const sync = async () => {
@@ -84,7 +85,6 @@ const App: React.FC = () => {
     }
   }, [users, isLoading, isDirty]);
 
-  // Multi-device active form lookup: Searches all users for the specific form ID
   const activeForm = useMemo(() => {
     if (!activeFormId || users.length === 0) return null;
     return users.flatMap(u => u.forms).find(f => f.id === activeFormId) || null;
@@ -125,7 +125,6 @@ const App: React.FC = () => {
     return (
       <Auth 
         onLogin={u => { 
-          // Always re-fetch the latest data for this specific user from global state
           const globalStateUser = users.find(gu => gu.id === u.id) || u;
           setCurrentUser(globalStateUser); 
           setCurrentView('dashboard'); 
@@ -168,7 +167,15 @@ const App: React.FC = () => {
           <Dashboard 
             forms={currentUser.forms.filter(f => !f.deletedAt)} 
             onCreate={() => {
-              const f: Form = { id: Math.random().toString(36).substr(2, 9), title: 'Untitled Form', descriptions: [], questions: [], createdAt: new Date().toISOString(), responses: [], isPublished: false };
+              const f: Form = { 
+                id: Math.random().toString(36).substr(2, 9), 
+                title: 'Untitled Form', 
+                descriptions: [], 
+                questions: [], 
+                createdAt: new Date().toISOString(), 
+                responses: [], 
+                isPublished: true // Default to true so links work out-of-the-box
+              };
               handleUpdateForms([...currentUser.forms, f]);
               setActiveFormId(f.id); 
               setCurrentView('editor');
@@ -198,7 +205,6 @@ const App: React.FC = () => {
             isGuest={!currentUser}
             onBack={() => { if (currentUser) { setCurrentView('editor'); window.location.hash = ''; } else { window.location.hash = ''; setCurrentView('dashboard'); } }} 
             onSubmit={answers => {
-              // Find the TRUE owner of the form from the global user list
               const owner = users.find(u => u.forms.some(f => f.id === activeFormId));
               if (!owner) return 0;
               let sn = 1;

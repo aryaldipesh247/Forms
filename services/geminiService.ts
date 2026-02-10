@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { QuestionType, FormTheme, Form } from "../types";
 import { uploadImageToCloudinary } from "./cloudinaryService";
@@ -119,12 +120,15 @@ export const generateBackgroundImageAI = async (prompt: string): Promise<string 
 export const generateInsightsFromAI = async (form: Form): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  const simplifiedResponses = form.responses.map(r => ({
+  const responses = form.responses ?? [];
+  const questions = form.questions ?? [];
+
+  const simplifiedResponses = responses.map(r => ({
     answers: r.answers
   }));
 
   const prompt = `Analyze the survey results for "${form.title}".
-  Questions: ${form.questions.map(q => q.title).join(', ')}
+  Questions: ${questions.map(q => q.title).join(', ')}
   Responses: ${JSON.stringify(simplifiedResponses)}
   
   Provide a professional summary with Key Takeaways and Recommendations. Use Markdown.`;

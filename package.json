@@ -1,3 +1,4 @@
+
 {
   "name": "forms-clone-pro",
   "description": "FORMS Pro: Professional data collection suite with Gemini AI integration",
@@ -14,7 +15,8 @@
     "react-dom": "^19.0.0",
     "@google/genai": "^1.3.0",
     "recharts": "^2.15.0",
-    "framer-motion": "^11.11.11"
+    "framer-motion": "^11.11.11",
+    "firebase": "^10.7.1"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

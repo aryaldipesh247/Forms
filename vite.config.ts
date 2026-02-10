@@ -25,14 +25,15 @@ export default defineConfig(({ mode }) => {
       build: {
         outDir: 'dist',
         sourcemap: false,
-        chunkSizeWarningLimit: 2000, // Increase limit to 2MB to handle large AI and Chart libraries
+        chunkSizeWarningLimit: 2000, 
         rollupOptions: {
           output: {
             manualChunks: {
               'vendor-react': ['react', 'react-dom'],
               'vendor-ai': ['@google/genai'],
               'vendor-charts': ['recharts'],
-              'vendor-motion': ['framer-motion']
+              'vendor-motion': ['framer-motion'],
+              'vendor-firebase': ['firebase/compat/app', 'firebase/compat/database']
             }
           }
         }

@@ -20,8 +20,11 @@ const ResponseDashboard: React.FC<ResponseDashboardProps> = ({ form, onBack, onU
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [insights, setInsights] = useState<string | null>(null);
 
+  const responses = form.responses ?? [];
+  const questions = form.questions ?? [];
+
   const handleGenerateInsights = async () => {
-    if (form.responses.length === 0) {
+    if (responses.length === 0) {
       alert("No responses to analyze yet.");
       return;
     }
@@ -38,7 +41,7 @@ const ResponseDashboard: React.FC<ResponseDashboardProps> = ({ form, onBack, onU
   };
 
   const handleDeleteExcel = () => {
-    if (form.responses.length === 0) {
+    if (responses.length === 0) {
       alert("There are no responses to delete.");
       return;
     }
@@ -50,19 +53,19 @@ const ResponseDashboard: React.FC<ResponseDashboardProps> = ({ form, onBack, onU
 
   const deleteQuestion = (id: string) => {
     if (window.confirm("Remove this question from form?")) {
-      onUpdateForm({ ...form, questions: form.questions.filter(q => q.id !== id) });
+      onUpdateForm({ ...form, questions: questions.filter(q => q.id !== id) });
     }
   };
 
   const downloadCSV = () => {
-    if (form.responses.length === 0) return alert('No data to export.');
+    if (responses.length === 0) return alert('No data to export.');
     
     const headers = ['Timestamp', 'Serial Number'];
-    form.questions.forEach(q => headers.push(q.title));
+    questions.forEach(q => headers.push(q.title));
 
-    const rows = form.responses.map(r => {
+    const rows = responses.map(r => {
       const row = [new Date(r.timestamp).toLocaleString(), r.serialNumber];
-      form.questions.forEach(q => {
+      questions.forEach(q => {
         const ans = r.answers[q.id];
         if (ans === undefined || ans === null) {
           row.push('');
@@ -86,7 +89,7 @@ const ResponseDashboard: React.FC<ResponseDashboardProps> = ({ form, onBack, onU
   const getQuestionStats = (q: Question) => {
     if (q.type !== QuestionType.CHOICE) return null;
     const stats: Record<string, number> = {};
-    form.responses.forEach(r => {
+    responses.forEach(r => {
       const ans = r.answers[q.id];
       if (ans) {
         stats[ans] = (stats[ans] || 0) + 1;
@@ -172,19 +175,19 @@ const ResponseDashboard: React.FC<ResponseDashboardProps> = ({ form, onBack, onU
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded shadow-sm border-l-8 border-[#008272]">
                     <p className="text-[10px] font-bold text-[#605e5c] uppercase tracking-widest">Total Responses</p>
-                    <h2 className="text-5xl font-black">{form.responses.length}</h2>
+                    <h2 className="text-5xl font-black">{responses.length}</h2>
                 </div>
                 <div className="bg-white p-6 rounded shadow-sm border-l-8 border-[#0078d4]">
                     <p className="text-[10px] font-bold text-[#605e5c] uppercase tracking-widest">Active Status</p>
                     <div className="flex items-center gap-2 mt-2">
-                       <div className={`w-3 h-3 rounded-full ${form.responses.length > 0 ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`}></div>
-                       <h2 className="text-xl font-black text-[#323130] uppercase tracking-widest">{form.responses.length > 0 ? 'Accepting' : 'No Data'}</h2>
+                       <div className={`w-3 h-3 rounded-full ${responses.length > 0 ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`}></div>
+                       <h2 className="text-xl font-black text-[#323130] uppercase tracking-widest">{responses.length > 0 ? 'Accepting' : 'No Data'}</h2>
                     </div>
                 </div>
               </div>
 
               <div className="space-y-4">
-                {form.questions.map((q, idx) => {
+                {questions.map((q, idx) => {
                   const stats = getQuestionStats(q);
                   return (
                     <div key={q.id} className="bg-white p-8 rounded shadow-sm relative group border border-[#edebe9]">
@@ -220,11 +223,11 @@ const ResponseDashboard: React.FC<ResponseDashboardProps> = ({ form, onBack, onU
                             </div>
                           ) : (
                             <div className="space-y-2">
-                              {form.responses.length === 0 ? (
+                              {responses.length === 0 ? (
                                 <p className="text-xs text-[#a19f9d] italic">No responses recorded yet.</p>
                               ) : (
                                 <div className="grid grid-cols-1 gap-2">
-                                  {form.responses.slice(0, 5).map((r, i) => (
+                                  {responses.slice(0, 5).map((r, i) => (
                                     <div key={r.id} className="text-xs p-3 bg-gray-50 rounded flex justify-between">
                                         <span className="font-medium text-[#605e5c] truncate pr-4">
                                           {typeof r.answers[q.id] === 'object' ? 'Detail entry' : (r.answers[q.id] || 'No response')}
@@ -232,7 +235,7 @@ const ResponseDashboard: React.FC<ResponseDashboardProps> = ({ form, onBack, onU
                                         <span className="text-[10px] text-[#a19f9d] shrink-0">#{r.serialNumber}</span>
                                     </div>
                                   ))}
-                                  {form.responses.length > 5 && <p className="text-[10px] text-center text-[#a19f9d] mt-2">+ {form.responses.length - 5} more</p>}
+                                  {responses.length > 5 && <p className="text-[10px] text-center text-[#a19f9d] mt-2">+ {responses.length - 5} more</p>}
                                 </div>
                               )}
                             </div>
@@ -240,16 +243,16 @@ const ResponseDashboard: React.FC<ResponseDashboardProps> = ({ form, onBack, onU
                         ) : (
                           <div className="space-y-3">
                               <div className="max-h-80 overflow-y-auto space-y-2 bg-[#faf9f8] p-4 rounded-sm border border-[#edebe9]">
-                                {form.responses.length === 0 ? (
+                                {responses.length === 0 ? (
                                   <p className="text-xs text-center text-[#a19f9d]">No data available</p>
                                 ) : (
-                                  form.responses.map((r, i) => (
+                                  responses.map((r, i) => (
                                     <div key={r.id} className="text-xs p-3 bg-white rounded border border-[#edebe9] flex gap-4">
                                       <span className="font-black text-[#008272] min-w-[30px]">#{r.serialNumber}</span>
                                       <div className="flex-1">
                                           {typeof r.answers[q.id] === 'object' ? (
                                             <div className="space-y-1">
-                                              {Object.entries(r.answers[q.id]).map(([key, val]: [string, any]) => (
+                                              {Object.entries(r.answers[q.id] ?? {}).map(([key, val]: [string, any]) => (
                                                 <div key={key} className="flex justify-between border-b border-gray-50 pb-1">
                                                   <span className="text-[9px] uppercase font-bold text-gray-400">{key.replace('_big', ' detail').replace('_small', ' value')}</span>
                                                   <span className="font-medium">{val}</span>

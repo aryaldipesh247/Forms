@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Form, Question, QuestionType, TextFormat, FormDescription, FormTheme } from '../types';
 import QuestionCard from './QuestionCard';
@@ -77,7 +78,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
     setIsAiLoading(true);
     try {
       const questions = await generateQuestionsFromAI(aiPrompt);
-      updateForm({ questions: [...form.questions, ...questions] });
+      updateForm({ questions: [...(form.questions ?? []), ...questions] });
       setAiPrompt('');
       setShowAIPane(false);
     } finally {
@@ -88,7 +89,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
   const handleAISuggestTheme = async () => {
     setIsAiLoading(true);
     try {
-      const themeSuggestion = await suggestThemeFromAI(form.title, form.descriptions[0]?.text || '');
+      const themeSuggestion = await suggestThemeFromAI(form.title, (form.descriptions ?? [])[0]?.text || '');
       updateForm({ theme: { ...theme, ...themeSuggestion } });
     } finally {
       setIsAiLoading(false);
@@ -96,7 +97,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
   };
 
   const moveQuestion = (index: number, direction: 'up' | 'down') => {
-    const newQuestions = [...form.questions];
+    const newQuestions = [...(form.questions ?? [])];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= newQuestions.length) return;
     [newQuestions[index], newQuestions[targetIndex]] = [newQuestions[targetIndex], newQuestions[index]];
@@ -130,12 +131,12 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
       formatting: { italic: true, fontSize: 'medium' },
       position: { x: 0, y: 0 }
     };
-    updateForm({ descriptions: [...form.descriptions, newDesc] });
+    updateForm({ descriptions: [...(form.descriptions ?? []), newDesc] });
   };
 
   const updateDescription = (id: string, updates: Partial<FormDescription>) => {
     updateForm({
-      descriptions: form.descriptions.map(d => d.id === id ? { ...d, ...updates } : d)
+      descriptions: (form.descriptions ?? []).map(d => d.id === id ? { ...d, ...updates } : d)
     });
   };
 
@@ -150,7 +151,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
         { id: Math.random().toString(36).substr(2, 9), text: 'Option 2' }
       ] : undefined,
     };
-    updateForm({ questions: [...form.questions, newQuestion] });
+    updateForm({ questions: [...(form.questions ?? []), newQuestion] });
   };
 
   const FormattingToolbar = ({ format, onChange }: { format: TextFormat, onChange: (f: TextFormat) => void }) => (
@@ -196,7 +197,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
         </div>
         <div className="flex items-center gap-8 h-full">
            <button className="px-4 h-full text-[11px] font-bold uppercase tracking-widest ms-active-underline text-[#008272]">Questions</button>
-           <button onClick={onViewResponses} className="px-4 h-full text-[11px] font-bold uppercase tracking-widest text-[#605e5c] hover:text-[#323130]">Responses ({form.responses.length})</button>
+           <button onClick={onViewResponses} className="px-4 h-full text-[11px] font-bold uppercase tracking-widest text-[#605e5c] hover:text-[#323130]">Responses ({(form.responses ?? []).length})</button>
         </div>
         <div className="flex items-center gap-2">
           <button 
@@ -425,7 +426,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
               />
             </motion.div>
 
-            {form.descriptions.map((desc) => (
+            {(form.descriptions ?? []).map((desc) => (
               <motion.div 
                 key={desc.id} drag dragMomentum={false}
                 className="relative group w-fit cursor-move mb-4"
@@ -439,7 +440,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
                   />
                 )}
                 <div className="absolute -left-8 top-1 opacity-0 group-hover:opacity-100 flex flex-col gap-1">
-                  <button onClick={() => updateForm({ descriptions: form.descriptions.filter(d => d.id !== desc.id) })} className="text-red-400 hover:text-red-600">✕</button>
+                  <button onClick={() => updateForm({ descriptions: (form.descriptions ?? []).filter(d => d.id !== desc.id) })} className="text-red-400 hover:text-red-600">✕</button>
                 </div>
                 <textarea 
                   value={desc.text} 
@@ -461,19 +462,19 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
           </div>
 
           <div className="space-y-4">
-            {form.questions.map((q, idx) => (
+            {(form.questions ?? []).map((q, idx) => (
               <QuestionCard 
-                key={q.id} question={q} number={idx + 1} allQuestions={form.questions}
-                onUpdate={updated => updateForm({ questions: form.questions.map(item => item.id === updated.id ? updated : item) })}
-                onDelete={id => updateForm({ questions: form.questions.filter(item => item.id !== id) })}
+                key={q.id} question={q} number={idx + 1} allQuestions={form.questions ?? []}
+                onUpdate={updated => updateForm({ questions: (form.questions ?? []).map(item => item.id === updated.id ? updated : item) })}
+                onDelete={id => updateForm({ questions: (form.questions ?? []).filter(item => item.id !== id) })}
                 onDuplicate={question => {
                   const duplicate = { ...question, id: Math.random().toString(36).substr(2, 9), title: `${question.title} (Copy)` };
-                  updateForm({ questions: [...form.questions, duplicate] });
+                  updateForm({ questions: [...(form.questions ?? []), duplicate] });
                 }}
                 onMoveUp={() => moveQuestion(idx, 'up')}
                 onMoveDown={() => moveQuestion(idx, 'down')}
                 isFirst={idx === 0}
-                isLast={idx === form.questions.length - 1}
+                isLast={idx === (form.questions ?? []).length - 1}
                 themeColor={theme.primaryColor}
               />
             ))}
