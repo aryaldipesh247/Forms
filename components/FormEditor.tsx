@@ -28,7 +28,6 @@ const THEME_PRESETS = [
   { id: 'serene', color: '#0078d4', bg: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2000&auto=format&fit=crop', label: 'Beach' },
   { id: 'sunset', color: '#ea4300', bg: 'https://images.unsplash.com/photo-1513002749550-c59d786b8e6c?q=80&w=2000&auto=format&fit=crop', label: 'Skyline' },
   { id: 'midnight', color: '#252423', bg: 'https://images.unsplash.com/photo-1475274047050-1d0c0975c63e?q=80&w=2000&auto=format&fit=crop', label: 'Midnight' },
-  // New Themes Added
   { id: 'ocean', color: '#005175', bg: 'https://images.unsplash.com/photo-1551244072-5d12893278ab?q=80&w=2000&auto=format&fit=crop', label: 'Ocean' },
   { id: 'forest', color: '#2d4a22', bg: 'https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=2000&auto=format&fit=crop', label: 'Deep Forest' },
   { id: 'autumn', color: '#8b4513', bg: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=2000&auto=format&fit=crop', label: 'Autumn' },
@@ -181,7 +180,8 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
 
       {showShare && <ShareDialog formId={form.id} onClose={() => setShowShare(false)} />}
       
-      <nav className="bg-white/95 backdrop-blur-md border-b sticky top-0 z-[60] px-6 h-12 flex items-center justify-between shadow-sm">
+      {/* FROZEN NAVIGATION BAR - NOW USING FIXED POSITIONING */}
+      <nav className="bg-white/95 backdrop-blur-md border-b fixed top-12 left-0 w-full z-[90] px-6 h-12 flex items-center justify-between shadow-md">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-1 hover:bg-gray-100 rounded text-[#008272]">←</button>
           <span className="font-bold text-[#323130] truncate max-w-[200px] text-[11px] uppercase tracking-widest">{form.title}</span>
@@ -205,7 +205,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
 
       <AnimatePresence>
         {showAIPane && (
-          <motion.div initial={{ x: 300 }} animate={{ x: 0 }} exit={{ x: 300 }} className="fixed right-0 top-12 bottom-0 w-80 bg-white shadow-2xl z-[70] border-l p-6 overflow-y-auto">
+          <motion.div initial={{ x: 300 }} animate={{ x: 0 }} exit={{ x: 300 }} className="fixed right-0 top-[96px] bottom-0 w-80 bg-white shadow-2xl z-[70] border-l p-6 overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-600 flex items-center gap-2">
                 <span className="text-lg">✨</span> Gemini AI Assistant
@@ -256,7 +256,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
         )}
 
         {showThemePane && (
-          <motion.div initial={{ x: 300 }} animate={{ x: 0 }} exit={{ x: 300 }} className="fixed right-0 top-12 bottom-0 w-80 bg-white shadow-2xl z-[70] border-l p-6 overflow-y-auto">
+          <motion.div initial={{ x: 300 }} animate={{ x: 0 }} exit={{ x: 300 }} className="fixed right-0 top-[96px] bottom-0 w-80 bg-white shadow-2xl z-[70] border-l p-6 overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-[10px] font-black uppercase tracking-widest text-[#008272]">Style Pane</h3>
               <button onClick={() => setShowThemePane(false)} className="text-gray-400 hover:text-black text-xl font-bold">&times;</button>
@@ -359,7 +359,8 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
         )}
       </AnimatePresence>
 
-      <main className="flex-1 py-10 relative">
+      {/* ADDED PADDING TOP TO OFFSET THE FIXED HEADERS (48px App + 48px Nav = 96px) */}
+      <main className="flex-1 py-10 relative pt-[96px]">
         <div className="max-w-3xl mx-auto space-y-8 px-4">
           <div className="bg-white/95 backdrop-blur-md rounded-md shadow-lg border-t-[10px] p-10 relative min-h-[400px] overflow-hidden" style={{ borderTopColor: theme.primaryColor }}>
             <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">

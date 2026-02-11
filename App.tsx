@@ -250,7 +250,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col antialiased relative" style={{ backgroundColor: currentView === 'preview' ? activeForm?.theme?.backgroundColor || '#f3f2f1' : '#f3f2f1' }}>
       {currentView !== 'preview' && (
-        <header className="bg-[#008272] px-6 h-12 flex justify-between items-center z-[100] text-white shadow-sm sticky top-0 transition-all">
+        <header className="bg-[#008272] px-6 h-12 flex justify-between items-center z-[100] text-white shadow-sm fixed top-0 left-0 w-full transition-all">
           <div className="flex items-center gap-3">
             <span className="font-bold text-lg cursor-pointer hover:opacity-80 transition-opacity" onClick={() => { setCurrentView('dashboard'); window.location.hash = ''; setActiveFormId(null); }}>FORMS PRO</span>
             {isSyncing && <div className="text-[8px] font-black uppercase tracking-widest animate-pulse px-2 bg-white/10 rounded flex items-center gap-2">
@@ -265,7 +265,7 @@ const App: React.FC = () => {
         </header>
       )}
 
-      <main className="flex-grow pb-12">
+      <main className={`flex-grow pb-12 ${currentView !== 'preview' ? 'pt-12' : ''}`}>
         {currentView === 'dashboard' && currentUser && (
           <Dashboard 
             forms={currentUser.forms.filter(f => !f.deletedAt)} 
