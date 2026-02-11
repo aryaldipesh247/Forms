@@ -6,6 +6,14 @@ import { User, Form, FormResponse } from '../types';
 
 const STORAGE_KEY = 'forms_pro_cloud_sync_v1';
 
+/**
+ * Utility to remove undefined properties from objects recursively.
+ * Firebase Realtime Database throws errors if any property in the object tree is 'undefined'.
+ */
+const sanitizeForFirebase = (obj: any): any => {
+  return JSON.parse(JSON.stringify(obj));
+};
+
 export const hashPassword = async (password: string): Promise<string> => {
   try {
     const msgBuffer = new TextEncoder().encode(password);
@@ -37,14 +45,15 @@ export const saveUser = async (user: User) => {
   try {
     const userRef = db.ref(`users/${user.id}`);
     const { forms, ...profile } = user;
-    await userRef.set(profile);
+    // Sanitize to remove any undefined fields (like optional phone)
+    await userRef.set(sanitizeForFirebase(profile));
   } catch (err: any) { }
 };
 
 export const saveResponse = async (formId: string, response: FormResponse) => {
   try {
     const respRef = db.ref(`responses/${formId}/${response.id}`);
-    await respRef.set(response);
+    await respRef.set(sanitizeForFirebase(response));
     await db.ref(`forms/${formId}/lastActivity`).set(new Date().toISOString());
     return true;
   } catch (e) {
@@ -85,6 +94,17 @@ export const getFormById = async (formId: string): Promise<Form | null> => {
   return null;
 };
 
+export const deleteFormPermanently = async (formId: string) => {
+  try {
+    await db.ref(`forms/${formId}`).remove();
+    await db.ref(`responses/${formId}`).remove();
+    return true;
+  } catch (e) {
+    console.error("Permanent delete failed:", e);
+    return false;
+  }
+};
+
 export const deleteUserCompletely = async (userId: string, forms: Form[]) => {
   try {
     await db.ref(`users/${userId}`).remove();
@@ -101,21 +121,16 @@ export const deleteUserCompletely = async (userId: string, forms: Form[]) => {
 export const saveForm = async (uid: string, form: Form) => {
   try {
     const formRef = db.ref(`forms/${form.id}`);
-    const { responses, ...formWithoutResponses } = form;
+    // Exclude 'responses' and 'archivedResponseSets' to prevent bloating the form node
+    const { responses, archivedResponseSets, ...formWithoutLargeData } = form;
     
-    // Ensure nested objects aren't lost in translation
-    const dbForm = {
-      ...formWithoutResponses,
+    const dbForm = sanitizeForFirebase({
+      ...formWithoutLargeData,
       ownerUid: uid,
       published: !!form.isPublished,
-      lastActivity: new Date().toISOString(),
-      // Force serialization for firebase safety
-      questions: form.questions.map(q => ({
-        ...q,
-        options: q.options || null
-      })),
-      descriptions: form.descriptions || []
-    };
+      lastActivity: new Date().toISOString()
+    });
+    
     await formRef.set(dbForm);
   } catch (err: any) {
     console.error("Firebase Form Save Failed:", err);

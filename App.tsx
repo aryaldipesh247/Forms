@@ -9,7 +9,9 @@ import RecycleBin from './components/RecycleBin';
 import Auth, { hashPassword } from './components/Auth';
 import Settings from './components/Settings';
 import { db } from './services/firebase';
-import { saveDatabase, loadDatabase, deleteUserCompletely, getFormById, saveResponse, saveForm } from './services/databaseService';
+import { saveDatabase, loadDatabase, deleteUserCompletely, getFormById, saveResponse, saveForm, deleteFormPermanently } from './services/databaseService';
+
+const SESSION_KEY = 'forms_pro_active_session_v1';
 
 const App: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -27,7 +29,7 @@ const App: React.FC = () => {
     }
   }, [users, isLoading]);
 
-  // LIVE SYNC ENGINE: Listen for changes to the active form and its responses in Firebase
+  // LIVE SYNC ENGINE
   useEffect(() => {
     if (!activeFormId) {
       setLiveForm(null);
@@ -95,10 +97,12 @@ const App: React.FC = () => {
       const adminSecret = 'Jungdai@1';
       const adminPin = '1111';
       
-      if (!loadedUsers.find(u => u.email === adminEmail)) {
+      let allUsers = [...loadedUsers];
+
+      if (!allUsers.find(u => u.email === adminEmail)) {
         const hashedPassword = await hashPassword(adminSecret);
         const hashedPin = await hashPassword(adminPin);
-        loadedUsers.push({
+        allUsers.push({
           id: 'admin-access-jungdai',
           email: adminEmail,
           password: hashedPassword,
@@ -109,7 +113,18 @@ const App: React.FC = () => {
         });
       }
 
-      setUsers(loadedUsers);
+      setUsers(allUsers);
+
+      const savedSessionId = localStorage.getItem(SESSION_KEY);
+      if (savedSessionId) {
+        const user = allUsers.find(u => u.id === savedSessionId);
+        if (user) {
+          setCurrentUser(user);
+        } else {
+          localStorage.removeItem(SESSION_KEY);
+        }
+      }
+
       setIsLoading(false);
 
       const hash = window.location.hash;
@@ -123,26 +138,41 @@ const App: React.FC = () => {
   }, []);
 
   const activeForm = useMemo(() => {
-    return liveForm || users.flatMap(u => u.forms).find(f => f.id === activeFormId) || null;
-  }, [liveForm, users, activeFormId]);
+    return liveForm || (currentUser ? currentUser.forms.find(f => f.id === activeFormId) : null) || null;
+  }, [liveForm, currentUser, activeFormId]);
+
+  const handleLogin = useCallback((user: User) => {
+    setCurrentUser(user);
+    localStorage.setItem(SESSION_KEY, user.id);
+    setCurrentView('dashboard');
+    window.location.hash = '';
+  }, []);
+
+  const handleSignOut = useCallback(() => {
+    setCurrentUser(null);
+    localStorage.removeItem(SESSION_KEY);
+    window.location.hash = '';
+    setActiveFormId(null);
+  }, []);
 
   const handleUpdateUser = useCallback(async (updatedUser: User) => {
     setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
-    if (currentUser?.id === updatedUser.id) setCurrentUser(updatedUser);
+    if (currentUser?.id === updatedUser.id) {
+      setCurrentUser(updatedUser);
+      localStorage.setItem(SESSION_KEY, updatedUser.id);
+    }
     await saveDatabase([updatedUser]);
   }, [currentUser]);
 
   const handleUpdateForms = useCallback(async (updatedForms: Form[]) => {
     if (!currentUser) return;
     
-    // Optimistically update local state
     const updatedUser = { ...currentUser, forms: updatedForms };
     setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
     setCurrentUser(updatedUser);
     
     setIsSyncing(true);
     try {
-      // Only push the most likely changed form or all if not specific
       const active = updatedForms.find(f => f.id === activeFormId);
       if (active) {
         await saveForm(currentUser.id, active);
@@ -154,11 +184,30 @@ const App: React.FC = () => {
     }
   }, [currentUser, activeFormId]);
 
+  const handlePermanentDelete = useCallback(async (id: string) => {
+    if (!currentUser) return;
+    
+    setIsSyncing(true);
+    try {
+      // 1. Physically remove from Firebase
+      await deleteFormPermanently(id);
+      
+      // 2. Remove from local state
+      const updatedForms = currentUser.forms.filter(f => f.id !== id);
+      const updatedUser = { ...currentUser, forms: updatedForms };
+      setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
+      setCurrentUser(updatedUser);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [currentUser]);
+
   const handleDeleteUser = useCallback(async (userId: string) => {
     if (!currentUser) return;
     await deleteUserCompletely(userId, currentUser.forms);
     setUsers(prev => prev.filter(u => u.id !== userId));
     setCurrentUser(null);
+    localStorage.removeItem(SESSION_KEY);
     setCurrentView('dashboard');
     window.location.hash = '';
   }, [currentUser]);
@@ -188,9 +237,9 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen relative overflow-hidden">
         <Auth 
-          onLogin={u => { setCurrentUser(u); setCurrentView('dashboard'); window.location.hash = ''; }} 
+          onLogin={handleLogin} 
           users={users} 
-          onRegister={u => { setUsers(prev => [...prev, u]); setCurrentUser(u); setCurrentView('dashboard'); }} 
+          onRegister={(u) => { setUsers(prev => [...prev, u]); handleLogin(u); }} 
           onUpdateUser={handleUpdateUser} 
         />
         <GlobalFooter />
@@ -211,7 +260,7 @@ const App: React.FC = () => {
           </div>
           <div className="flex items-center gap-6">
             <button onClick={() => setCurrentView('settings')} className="text-[10px] font-black uppercase tracking-[0.2em] hover:opacity-70 transition-opacity">Settings</button>
-            <button onClick={() => { setCurrentUser(null); window.location.hash = ''; setActiveFormId(null); }} className="text-[10px] font-black uppercase bg-white/10 px-3 py-1.5 rounded hover:bg-white/20 transition-all">Sign Out</button>
+            <button onClick={handleSignOut} className="text-[10px] font-black uppercase bg-white/10 px-3 py-1.5 rounded hover:bg-white/20 transition-all">Sign Out</button>
           </div>
         </header>
       )}
@@ -276,7 +325,15 @@ const App: React.FC = () => {
         )}
 
         {currentView === 'recycle-bin' && currentUser && (
-          <RecycleBin forms={currentUser.forms.filter(f => f.deletedAt)} archivedResponses={currentUser.forms.flatMap(f => f.archivedResponseSets || [])} onRestore={id => handleUpdateForms(currentUser.forms.map(f => f.id === id ? {...f, deletedAt: undefined} : f))} onPermanentDelete={id => handleUpdateForms(currentUser.forms.filter(f => f.id !== id))} onRestoreArchive={(fid, aid) => { const f = currentUser.forms.find(x => x.id === fid); const set = f?.archivedResponseSets?.find(s => s.id === aid); if (set) handleUpdateForms(currentUser.forms.map(x => x.id === fid ? {...x, responses: [...x.responses, ...set.responses], archivedResponseSets: x.archivedResponseSets?.filter(s => s.id !== aid)} : x)); }} onDeleteArchivePermanently={(fid, aid) => handleUpdateForms(currentUser.forms.map(x => x.id === fid ? {...x, archivedResponseSets: x.archivedResponseSets?.filter(s => s.id !== aid)} : x))} onBack={() => setCurrentView('dashboard')} />
+          <RecycleBin 
+            forms={currentUser.forms.filter(f => f.deletedAt)} 
+            archivedResponses={currentUser.forms.flatMap(f => f.archivedResponseSets || [])} 
+            onRestore={id => handleUpdateForms(currentUser.forms.map(f => f.id === id ? {...f, deletedAt: undefined} : f))} 
+            onPermanentDelete={handlePermanentDelete} 
+            onRestoreArchive={(fid, aid) => { const f = currentUser.forms.find(x => x.id === fid); const set = f?.archivedResponseSets?.find(s => s.id === aid); if (set) handleUpdateForms(currentUser.forms.map(x => x.id === fid ? {...x, responses: [...x.responses, ...set.responses], archivedResponseSets: x.archivedResponseSets?.filter(s => s.id !== aid)} : x)); }} 
+            onDeleteArchivePermanently={(fid, aid) => handleUpdateForms(currentUser.forms.map(x => x.id === fid ? {...x, archivedResponseSets: x.archivedResponseSets?.filter(s => s.id !== aid)} : x))} 
+            onBack={() => setCurrentView('dashboard')} 
+          />
         )}
 
         {currentView === 'settings' && currentUser && <Settings user={currentUser} onUpdate={handleUpdateUser} onDeleteAccount={handleDeleteUser} onBack={() => setCurrentView('dashboard')} />}

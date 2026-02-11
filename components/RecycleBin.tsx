@@ -31,12 +31,9 @@ const RecycleBin: React.FC<RecycleBinProps> = ({
 
   const downloadArchiveCSV = (archive: ResponseArchive) => {
     if (archive.responses.length === 0) return alert('No data in this archive.');
-    
-    // Use first response to infer keys if needed, but usually we just want CSV
     const firstRes = archive.responses[0];
     const keys = Object.keys(firstRes.answers);
     const headers = ['Timestamp', 'Serial Number', ...keys];
-    
     const rows = archive.responses.map(r => {
       const row = [new Date(r.timestamp).toLocaleString(), r.serialNumber];
       keys.forEach(k => {
@@ -46,7 +43,6 @@ const RecycleBin: React.FC<RecycleBinProps> = ({
       });
       return row.join('","');
     });
-
     const csvContent = `"${headers.join('","')}"\n"${rows.join('"\n"')}"`;
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -92,7 +88,7 @@ const RecycleBin: React.FC<RecycleBinProps> = ({
                 </div>
                 <div className="px-6 py-4 border-t border-[#f3f2f1] flex justify-between items-center bg-[#faf9f8]">
                   <button onClick={() => onRestore(form.id)} className="text-xs text-[#008272] font-bold hover:underline uppercase tracking-wider">Restore</button>
-                  <button onClick={() => onPermanentDelete(form.id)} className="text-xs text-[#a4262c] font-bold hover:underline uppercase tracking-wider">Delete Forever</button>
+                  <button onClick={() => { if(confirm('Permanently delete this form? This cannot be undone.')) onPermanentDelete(form.id); }} className="text-xs text-[#a4262c] font-bold hover:underline uppercase tracking-wider">Delete Forever</button>
                 </div>
               </div>
             ))}
@@ -137,7 +133,7 @@ const RecycleBin: React.FC<RecycleBinProps> = ({
                     Restore
                   </button>
                   <button 
-                    onClick={() => onDeleteArchivePermanently(archive.formId, archive.id)} 
+                    onClick={() => { if(confirm('Delete archive forever?')) onDeleteArchivePermanently(archive.formId, archive.id); }} 
                     className="text-xs text-[#a4262c] font-bold hover:underline uppercase tracking-wider"
                   >
                     Delete Forever
