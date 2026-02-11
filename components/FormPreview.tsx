@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Form, QuestionType, Question } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { uploadImageToCloudinary } from '../services/cloudinaryService';
@@ -70,6 +70,61 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
   const [ticketNumber, setTicketNumber] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  /**
+   * DYNAMIC BRANCHING LOGIC
+   * Calculates the ordered path of visible questions based on answers and rules.
+   */
+  const visibleQuestions = useMemo(() => {
+    if (!form || !form.questions.length) return [];
+    
+    const questions = form.questions;
+    const path: Question[] = [];
+    const visited = new Set<string>();
+    
+    let currentId: string | 'end' | 'next' = questions[0].id;
+
+    while (currentId && currentId !== 'end') {
+      const q = questions.find(x => x.id === currentId);
+      if (!q || visited.has(q.id)) break;
+      
+      path.push(q);
+      visited.add(q.id);
+
+      const answer = answers[q.id];
+      let nextId: string | 'next' | 'end' = 'next';
+
+      // 1. Check Option-level Branching (Only if single selection choice)
+      if (q.type === QuestionType.CHOICE && !q.multipleSelection && answer) {
+        const selectedOpt = q.options?.find(o => o.text === answer);
+        if (selectedOpt?.branching?.nextQuestionId) {
+          nextId = selectedOpt.branching.nextQuestionId;
+        }
+      }
+
+      // 2. Check Question-level Branching if no specific option branch
+      if (nextId === 'next' && q.enableBranching && q.branching?.nextQuestionId) {
+        nextId = q.branching.nextQuestionId;
+      }
+
+      // Resolve 'next' to the physical next question in the array
+      if (nextId === 'next') {
+        const currentIndex = questions.findIndex(x => x.id === q.id);
+        const nextPhysical = questions[currentIndex + 1];
+        currentId = nextPhysical ? nextPhysical.id : 'end';
+      } else {
+        currentId = nextId;
+      }
+
+      // Stop revealing questions if a required question isn't answered yet
+      // This creates a "progressive reveal" effect common in professional forms
+      if (q.required && (!answer || (Array.isArray(answer) && answer.length === 0))) {
+        break;
+      }
+    }
+
+    return path;
+  }, [form, answers]);
+
   const handleAnswer = useCallback((qId: string, value: any) => {
     setAnswers(prev => ({ ...prev, [qId]: value }));
   }, []);
@@ -77,8 +132,8 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
   const handleSubmit = useCallback(async () => {
     if (!form) return;
     
-    // Validation
-    for (const q of form.questions) {
+    // Validation ONLY for questions on the current visible path
+    for (const q of visibleQuestions) {
       if (q.required && (!answers[q.id] || (Array.isArray(answers[q.id]) && answers[q.id].length === 0))) {
         const el = document.getElementById(`q-${q.id}`);
         el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -98,7 +153,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
     } finally {
       setIsSubmitting(false);
     }
-  }, [answers, onSubmit, form]);
+  }, [answers, onSubmit, form, visibleQuestions]);
 
   if (!form) return null;
 
@@ -153,147 +208,164 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
             </div>
           </motion.div>
 
-          {/* All Questions rendered in one sequence */}
-          {form.questions.map((q, idx) => (
-            <motion.div key={q.id} id={`q-${q.id}`} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="bg-white/95 backdrop-blur-md p-10 md:p-14 rounded shadow-lg border-l-[12px]" style={{ borderLeftColor: theme.primaryColor }}>
-              <div className="mb-8">
-                <span className="text-[10px] font-black uppercase text-gray-400 tracking-[0.3em] mb-3 block">Question {idx + 1}</span>
-                <h3 className="text-2xl md:text-3xl font-black text-[#323130] leading-tight">
-                  {q.title} {q.required && <span className="text-red-500 ml-1">*</span>}
-                </h3>
-                {q.subtitle && <p className="text-gray-400 italic text-sm mt-3">{q.subtitle}</p>}
-              </div>
-              
-              <div className="space-y-6">
-                {q.type === QuestionType.IMAGE_UPLOAD && <ImageUploadQuestion q={q} value={answers?.[q.id]} onAnswer={val => handleAnswer(q.id, val)} />}
+          {/* Dynamic Questions rendering based on branching path */}
+          <AnimatePresence mode="popLayout">
+            {visibleQuestions.map((q, idx) => (
+              <motion.div 
+                key={q.id} 
+                id={`q-${q.id}`} 
+                initial={{ opacity: 0, x: -10 }} 
+                animate={{ opacity: 1, x: 0 }} 
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white/95 backdrop-blur-md p-10 md:p-14 rounded shadow-lg border-l-[12px]" 
+                style={{ borderLeftColor: theme.primaryColor }}
+              >
+                <div className="mb-8">
+                  <span className="text-[10px] font-black uppercase text-gray-400 tracking-[0.3em] mb-3 block">Question {idx + 1}</span>
+                  <h3 className="text-2xl md:text-3xl font-black text-[#323130] leading-tight">
+                    {q.title} {q.required && <span className="text-red-500 ml-1">*</span>}
+                  </h3>
+                  {q.subtitle && <p className="text-gray-400 italic text-sm mt-3">{q.subtitle}</p>}
+                </div>
                 
-                {q.type === QuestionType.SECTION && (
-                  <div className="p-8 bg-gray-50 rounded border-2 border-dashed border-gray-100 text-center">
-                     <p className="text-gray-500 font-black uppercase tracking-widest text-[#008272]">--- {q.title} ---</p>
-                  </div>
-                )}
+                <div className="space-y-6">
+                  {q.type === QuestionType.IMAGE_UPLOAD && <ImageUploadQuestion q={q} value={answers?.[q.id]} onAnswer={val => handleAnswer(q.id, val)} />}
+                  
+                  {q.type === QuestionType.SECTION && (
+                    <div className="p-8 bg-gray-50 rounded border-2 border-dashed border-gray-100 text-center">
+                       <p className="text-gray-500 font-black uppercase tracking-widest text-[#008272]">--- {q.title} ---</p>
+                    </div>
+                  )}
 
-                {q.type === QuestionType.CHOICE && (
-                  <div className="space-y-3">
-                    {q.options?.map(o => (
-                      <label key={o.id} className="flex items-center gap-4 p-5 border-2 border-gray-100 rounded hover:border-[#008272] hover:bg-teal-50/20 cursor-pointer transition-all active:scale-[0.99] group">
-                        <input 
-                          type={q.multipleSelection ? 'checkbox' : 'radio'} 
-                          name={q.id} 
-                          className="w-5 h-5 cursor-pointer" 
-                          style={{ accentColor: theme.primaryColor }} 
-                          onChange={() => {
-                            if (q.multipleSelection) {
-                              const current = Array.isArray(answers?.[q.id]) ? answers[q.id] : [];
-                              if (current.includes(o.text)) {
-                                handleAnswer(q.id, current.filter((v: string) => v !== o.text));
-                              } else {
-                                handleAnswer(q.id, [...current, o.text]);
-                              }
-                            } else {
-                              handleAnswer(q.id, o.text);
-                            }
-                          }} 
-                          checked={q.multipleSelection ? (Array.isArray(answers?.[q.id]) ? answers[q.id].includes(o.text) : false) : answers?.[q.id] === o.text}
-                        />
-                        <span className="font-black text-sm text-[#323130] uppercase tracking-wider group-hover:text-[#008272]">{o.text}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
+                  {q.type === QuestionType.CHOICE && (
+                    <div className="space-y-3">
+                      {q.options?.map(o => {
+                        const isChecked = q.multipleSelection 
+                          ? (Array.isArray(answers?.[q.id]) ? answers[q.id].includes(o.text) : false) 
+                          : (answers?.[q.id] === o.text);
+                        
+                        return (
+                          <label key={o.id} className={`flex items-center gap-4 p-5 border-2 rounded cursor-pointer transition-all active:scale-[0.99] group ${isChecked ? 'border-[#008272] bg-teal-50/20' : 'border-gray-100 hover:border-gray-300'}`}>
+                            <input 
+                              type={q.multipleSelection ? 'checkbox' : 'radio'} 
+                              name={q.id} 
+                              className="w-5 h-5 cursor-pointer" 
+                              style={{ accentColor: theme.primaryColor }} 
+                              onChange={() => {
+                                if (q.multipleSelection) {
+                                  const current = Array.isArray(answers?.[q.id]) ? answers[q.id] : [];
+                                  if (current.includes(o.text)) {
+                                    handleAnswer(q.id, current.filter((v: string) => v !== o.text));
+                                  } else {
+                                    handleAnswer(q.id, [...current, o.text]);
+                                  }
+                                } else {
+                                  handleAnswer(q.id, o.text);
+                                }
+                              }} 
+                              checked={isChecked}
+                            />
+                            <span className={`font-black text-sm uppercase tracking-wider group-hover:text-[#008272] ${isChecked ? 'text-[#008272]' : 'text-[#323130]'}`}>{o.text}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
 
-                {q.type === QuestionType.RANKING && (
-                  <div className="space-y-3">
-                    {(answers?.[q.id] || []).length > 0 && (
-                      <div className="mb-4 p-4 bg-teal-50/50 rounded border border-dashed border-[#008272]/30 flex flex-wrap gap-2 items-center">
-                        {(answers[q.id] || []).map((rankItem: string, i: number) => (
-                          <span key={i} className="px-3 py-1.5 bg-[#008272] text-white text-[10px] font-black rounded-full shadow-md">
-                            {i + 1}. {rankItem}
-                          </span>
-                        ))}
-                        <button onClick={() => handleAnswer(q.id, [])} className="text-[9px] font-black text-red-500 ml-auto uppercase tracking-widest hover:underline">Clear</button>
-                      </div>
-                    )}
-                    {q.options?.filter(o => !(Array.isArray(answers?.[q.id]) ? answers[q.id] : []).includes(o.text)).map(o => (
-                      <button key={o.id} onClick={() => {
-                        const current = Array.isArray(answers?.[q.id]) ? answers[q.id] : [];
-                        handleAnswer(q.id, [...current, o.text]);
-                      }} className="w-full flex items-center gap-4 p-5 border-2 border-gray-100 rounded hover:border-[#008272] hover:bg-teal-50/20 cursor-pointer transition-all text-left group">
-                        <div className="w-8 h-8 rounded-full border-2 border-gray-200 flex items-center justify-center text-xs font-black text-gray-300 group-hover:border-[#008272] group-hover:text-[#008272]">?</div>
-                        <span className="font-black text-sm text-[#323130] uppercase tracking-wider">{o.text}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                  {q.type === QuestionType.RANKING && (
+                    <div className="space-y-3">
+                      {(answers?.[q.id] || []).length > 0 && (
+                        <div className="mb-4 p-4 bg-teal-50/50 rounded border border-dashed border-[#008272]/30 flex flex-wrap gap-2 items-center">
+                          {(answers[q.id] || []).map((rankItem: string, i: number) => (
+                            <span key={i} className="px-3 py-1.5 bg-[#008272] text-white text-[10px] font-black rounded-full shadow-md">
+                              {i + 1}. {rankItem}
+                            </span>
+                          ))}
+                          <button onClick={() => handleAnswer(q.id, [])} className="text-[9px] font-black text-red-500 ml-auto uppercase tracking-widest hover:underline">Clear</button>
+                        </div>
+                      )}
+                      {q.options?.filter(o => !(Array.isArray(answers?.[q.id]) ? answers[q.id] : []).includes(o.text)).map(o => (
+                        <button key={o.id} onClick={() => {
+                          const current = Array.isArray(answers?.[q.id]) ? answers[q.id] : [];
+                          handleAnswer(q.id, [...current, o.text]);
+                        }} className="w-full flex items-center gap-4 p-5 border-2 border-gray-100 rounded hover:border-[#008272] hover:bg-teal-50/20 cursor-pointer transition-all text-left group">
+                          <div className="w-8 h-8 rounded-full border-2 border-gray-200 flex items-center justify-center text-xs font-black text-gray-300 group-hover:border-[#008272] group-hover:text-[#008272]">?</div>
+                          <span className="font-black text-sm text-[#323130] uppercase tracking-wider">{o.text}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
-                {q.type === QuestionType.TEXT && (
-                  <textarea 
-                    className="w-full border-2 border-gray-100 p-5 rounded bg-gray-50 focus:bg-white focus:border-[#008272] transition-all outline-none font-bold text-base min-h-[120px]" 
-                    placeholder="Type your response..." 
-                    value={answers?.[q.id] || ''}
-                    onChange={e => handleAnswer(q.id, e.target.value)} 
-                  />
-                )}
+                  {q.type === QuestionType.TEXT && (
+                    <textarea 
+                      className="w-full border-2 border-gray-100 p-5 rounded bg-gray-50 focus:bg-white focus:border-[#008272] transition-all outline-none font-bold text-base min-h-[120px]" 
+                      placeholder="Type your response..." 
+                      value={answers?.[q.id] || ''}
+                      onChange={e => handleAnswer(q.id, e.target.value)} 
+                    />
+                  )}
 
-                {q.type === QuestionType.DATE && (
-                  <input 
-                    type="date" 
-                    className="w-full border-2 border-gray-100 p-5 rounded bg-gray-50 font-black outline-none focus:border-[#008272] text-lg" 
-                    value={answers?.[q.id] || ''}
-                    onChange={e => handleAnswer(q.id, e.target.value)} 
-                  />
-                )}
+                  {q.type === QuestionType.DATE && (
+                    <input 
+                      type="date" 
+                      className="w-full border-2 border-gray-100 p-5 rounded bg-gray-50 font-black outline-none focus:border-[#008272] text-lg" 
+                      value={answers?.[q.id] || ''}
+                      onChange={e => handleAnswer(q.id, e.target.value)} 
+                    />
+                  )}
 
-                {q.type === QuestionType.DOUBLE_RANKING_BOX && (
-                  <div className="overflow-x-auto border rounded bg-white shadow-inner">
-                    <table className="w-full border-collapse">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="text-left text-[10px] font-black uppercase text-gray-400 p-4 border-b">Item</th>
-                          <th className="text-center text-[10px] font-black uppercase text-gray-400 p-4 border-b">{q.columnName || 'Details'}</th>
-                          <th className="text-center text-[10px] font-black uppercase text-gray-400 p-4 border-b">{q.columnNameSmall || 'Qty'}</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {q.options?.map(o => {
-                          const currentAnswers = answers?.[q.id] || {};
-                          const rowValue = currentAnswers[o.id] || {};
-                          return (
-                            <tr key={o.id} className="hover:bg-gray-50/50">
-                              <td className="p-4 font-black text-sm text-[#323130]">{o.text}</td>
-                              <td className="p-2">
-                                <input
-                                  type="text"
-                                  placeholder="..."
-                                  value={rowValue[`${q.columnName || 'detail'}_big`] || ''}
-                                  className="w-full p-3 bg-white border rounded text-xs font-medium focus:border-[#008272] outline-none"
-                                  onChange={e => {
-                                    handleAnswer(q.id, { ...currentAnswers, [o.id]: { ...rowValue, [`${q.columnName || 'detail'}_big`]: e.target.value } });
-                                  }}
-                                />
-                              </td>
-                              <td className="p-2">
-                                <input
-                                  type="text"
-                                  placeholder="0"
-                                  value={rowValue[`${q.columnNameSmall || 'value'}_small`] || ''}
-                                  className="w-16 mx-auto p-3 bg-white border rounded text-xs text-center font-black focus:border-[#008272] outline-none"
-                                  onChange={e => {
-                                    handleAnswer(q.id, { ...currentAnswers, [o.id]: { ...rowValue, [`${q.columnNameSmall || 'value'}_small`]: e.target.value } });
-                                  }}
-                                />
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          ))}
+                  {q.type === QuestionType.DOUBLE_RANKING_BOX && (
+                    <div className="overflow-x-auto border rounded bg-white shadow-inner">
+                      <table className="w-full border-collapse">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="text-left text-[10px] font-black uppercase text-gray-400 p-4 border-b">Item</th>
+                            <th className="text-center text-[10px] font-black uppercase text-gray-400 p-4 border-b">{q.columnName || 'Details'}</th>
+                            <th className="text-center text-[10px] font-black uppercase text-gray-400 p-4 border-b">{q.columnNameSmall || 'Qty'}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {q.options?.map(o => {
+                            const currentAnswers = answers?.[q.id] || {};
+                            const rowValue = currentAnswers[o.id] || {};
+                            return (
+                              <tr key={o.id} className="hover:bg-gray-50/50">
+                                <td className="p-4 font-black text-sm text-[#323130]">{o.text}</td>
+                                <td className="p-2">
+                                  <input
+                                    type="text"
+                                    placeholder="..."
+                                    value={rowValue[`${q.columnName || 'detail'}_big`] || ''}
+                                    className="w-full p-3 bg-white border rounded text-xs font-medium focus:border-[#008272] outline-none"
+                                    onChange={e => {
+                                      handleAnswer(q.id, { ...currentAnswers, [o.id]: { ...rowValue, [`${q.columnName || 'detail'}_big`]: e.target.value } });
+                                    }}
+                                  />
+                                </td>
+                                <td className="p-2">
+                                  <input
+                                    type="text"
+                                    placeholder="0"
+                                    value={rowValue[`${q.columnNameSmall || 'value'}_small`] || ''}
+                                    className="w-16 mx-auto p-3 bg-white border rounded text-xs text-center font-black focus:border-[#008272] outline-none"
+                                    onChange={e => {
+                                      handleAnswer(q.id, { ...currentAnswers, [o.id]: { ...rowValue, [`${q.columnNameSmall || 'value'}_small`]: e.target.value } });
+                                    }}
+                                  />
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
 
+          {/* Submit button logic based on path completion */}
           <div className="flex justify-center pt-8 mb-20">
              <button 
               onClick={handleSubmit}

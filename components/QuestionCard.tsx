@@ -24,17 +24,17 @@ const FormatToolbar: React.FC<{ format: TextFormat, onChange: (f: TextFormat) =>
 );
 
 const BranchingSelector: React.FC<{ value?: BranchingConfig, questions: Question[], onChange: (v: BranchingConfig) => void }> = ({ value, questions, onChange }) => (
-  <div className="flex items-center gap-2 mt-2 ml-4 p-2 bg-gray-50 rounded border border-dashed border-gray-200">
+  <div className="flex items-center gap-2 mt-2 ml-4 p-2 bg-teal-50/30 rounded border border-dashed border-teal-100">
     <span className="text-[9px] font-bold uppercase text-gray-400">Go to:</span>
     <select 
       value={value?.nextQuestionId || 'next'} 
       onChange={(e) => onChange({ nextQuestionId: e.target.value as any })}
-      className="text-[10px] bg-transparent border-none outline-none font-bold text-[#008272]"
+      className="text-[10px] bg-transparent border-none outline-none font-bold text-[#008272] cursor-pointer"
     >
       <option value="next">Next Question</option>
       <option value="end">End of Form</option>
       {questions.map((q, idx) => (
-        <option key={q.id} value={q.id}>Q{idx + 1}: {q.title.substring(0, 20)}...</option>
+        <option key={q.id} value={q.id}>Q{idx + 1}: {q.title.substring(0, 30)}...</option>
       ))}
     </select>
   </div>
@@ -95,7 +95,6 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
       onBlur={(e) => { 
         if (!e.currentTarget.contains(e.relatedTarget)) {
            setIsActive(false);
-           // Auto-save text fields on blur
            if (hasUnsavedChanges) handleManualUpdate();
         }
       }}
@@ -171,10 +170,36 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                     <button onClick={() => updateProp('options', localQuestion.options?.filter(o => o.id !== opt.id))} className="text-gray-300 hover:text-red-500">✕</button>
                   </div>
                 </div>
-                {localQuestion.enableBranching && <BranchingSelector questions={allQuestions.filter(aq => aq.id !== localQuestion.id)} value={opt.branching} onChange={v => updateOption(opt.id, opt.text, v)} />}
+                {localQuestion.enableBranching && (
+                  <BranchingSelector 
+                    questions={allQuestions.filter(aq => aq.id !== localQuestion.id)} 
+                    value={opt.branching} 
+                    onChange={v => updateOption(opt.id, opt.text, v)} 
+                  />
+                )}
               </div>
             ))}
-            <button onClick={addOption} className="text-[10px] font-bold uppercase tracking-widest text-[#008272]">+ Add {localQuestion.type === QuestionType.RANKING ? 'Ranking' : 'Choice'}</button>
+            
+            <div className="flex flex-col gap-4 mt-6 pt-4 border-t border-dashed border-gray-100">
+               <div className="flex items-center gap-6">
+                  <button onClick={addOption} className="text-[10px] font-bold uppercase tracking-widest text-[#008272]">+ Add {localQuestion.type === QuestionType.RANKING ? 'Ranking' : 'Choice'}</button>
+                  
+                  {localQuestion.type === QuestionType.CHOICE && (
+                    <label className="flex items-center gap-2 cursor-pointer group/toggle">
+                      <div className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={localQuestion.multipleSelection} 
+                          onChange={e => updateProp('multipleSelection', e.target.checked, true)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-8 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#008272]"></div>
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover/toggle:text-[#008272] transition-colors">Multiple Answers</span>
+                    </label>
+                  )}
+               </div>
+            </div>
           </div>
         )}
 
@@ -233,12 +258,29 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
           <div className="relative">
             <button onClick={() => setShowMenu(!showMenu)} className="p-2 text-gray-400 hover:text-black rounded text-xl">⋮</button>
             {showMenu && (
-              <div className="absolute bottom-full right-0 mb-3 w-56 bg-white border shadow-2xl rounded-md py-2 z-50">
-                <button onClick={() => { updateProp('enableBranching', !localQuestion.enableBranching, true); setShowMenu(false); }} className={`w-full text-left px-5 py-3 text-xs font-bold uppercase ${localQuestion.enableBranching ? 'text-[#008272]' : 'text-gray-700'} hover:bg-gray-50`}>
-                  {localQuestion.enableBranching ? '✓ Branching Settings' : 'Branching Settings'}
+              <div className="absolute bottom-full right-0 mb-3 w-64 bg-white border shadow-2xl rounded-md py-2 z-50 animate-in slide-in-from-bottom-2">
+                <button onClick={() => { updateProp('enableBranching', !localQuestion.enableBranching, true); setShowMenu(false); }} className={`w-full text-left px-5 py-3 text-xs font-bold uppercase ${localQuestion.enableBranching ? 'text-[#008272] bg-teal-50' : 'text-gray-700'} hover:bg-gray-50`}>
+                  {localQuestion.enableBranching ? '✓ Branching Active' : 'Enable Branching'}
                 </button>
+                {localQuestion.enableBranching && (
+                  <div className="px-5 py-2 border-t mt-1 bg-gray-50/50">
+                    <p className="text-[8px] font-black text-gray-400 uppercase mb-2">Default Next Step:</p>
+                    <select 
+                      value={localQuestion.branching?.nextQuestionId || 'next'}
+                      onChange={(e) => updateProp('branching', { nextQuestionId: e.target.value }, true)}
+                      className="w-full text-[10px] font-bold bg-white border p-1 rounded"
+                    >
+                      <option value="next">Next Question</option>
+                      <option value="end">End of Form</option>
+                      {allQuestions.filter(aq => aq.id !== localQuestion.id).map((aq, i) => (
+                        <option key={aq.id} value={aq.id}>Q{i+1}: {aq.title.substring(0, 20)}...</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div className="h-px bg-gray-100 my-1"></div>
                 <button onClick={() => { updateProp('showSubtitle', !localQuestion.showSubtitle, true); setShowMenu(false); }} className={`w-full text-left px-5 py-3 text-xs font-bold uppercase ${localQuestion.showSubtitle ? 'text-[#008272]' : 'text-gray-700'} hover:bg-gray-50`}>
-                  {localQuestion.showSubtitle ? '✓ Subtitle' : 'Subtitle'}
+                  {localQuestion.showSubtitle ? '✓ Subtitle Enabled' : 'Add Subtitle'}
                 </button>
               </div>
             )}
