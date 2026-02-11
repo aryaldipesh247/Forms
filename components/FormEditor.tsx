@@ -127,7 +127,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
   const addDescription = () => {
     const newDesc: FormDescription = {
       id: Math.random().toString(36).substr(2, 9),
-      text: 'New separate description block',
+      text: 'New resizable description box',
       formatting: { italic: true, fontSize: 'medium' },
       position: { x: 0, y: 0 }
     };
@@ -144,7 +144,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
     const newQuestion: Question = {
       id: Math.random().toString(36).substr(2, 9),
       type,
-      title: 'New Question',
+      title: type === QuestionType.SECTION ? 'New Section Break' : 'New Question',
       required: false,
       options: [QuestionType.CHOICE, QuestionType.RANKING, QuestionType.DOUBLE_RANKING_BOX].includes(type) ? [
         { id: Math.random().toString(36).substr(2, 9), text: 'Option 1' },
@@ -190,7 +190,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
 
       {showShare && <ShareDialog formId={form.id} isPublished={form.isPublished} onClose={() => setShowShare(false)} />}
       
-      <nav className="bg-white/95 backdrop-blur-md border-b sticky top-0 z-[60] px-6 h-12 flex items-center justify-between shadow-sm">
+      <nav className="bg-white/95 backdrop-blur-md border-b sticky top-0 z-50 px-6 h-12 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-1 hover:bg-gray-100 rounded text-[#008272]">←</button>
           <span className="font-bold text-[#323130] truncate max-w-[200px] text-[11px] uppercase tracking-widest">{form.title}</span>
@@ -200,245 +200,51 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
            <button onClick={onViewResponses} className="px-4 h-full text-[11px] font-bold uppercase tracking-widest text-[#605e5c] hover:text-[#323130]">Responses ({(form.responses ?? []).length})</button>
         </div>
         <div className="flex items-center gap-2">
-          <button 
-            onClick={() => { setShowAIPane(!showAIPane); setShowThemePane(false); }} 
-            className="px-3 py-1.5 rounded text-[10px] font-black uppercase tracking-widest bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow hover:brightness-110 transition-all flex items-center gap-1.5"
-          >
+          <button onClick={() => { setShowAIPane(!showAIPane); setShowThemePane(false); }} className="px-3 py-1.5 rounded text-[10px] font-black uppercase tracking-widest bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow hover:brightness-110 transition-all flex items-center gap-1.5">
             <span className="text-sm">✨</span> AI Assistant
           </button>
           <button onClick={() => { setShowThemePane(!showThemePane); setShowAIPane(false); }} className="px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:bg-gray-50">Style</button>
           <button onClick={onPreview} className="text-[#008272] px-3 py-1.5 rounded font-bold text-[10px] uppercase tracking-widest hover:bg-gray-50">Preview</button>
-          
           <div className="h-6 w-px bg-gray-200 mx-1" />
-          
-          <button 
-            onClick={togglePublish} 
-            className={`px-3 py-1.5 rounded-sm text-[10px] font-bold uppercase tracking-widest transition-all ${form.isPublished ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}
-          >
+          <button onClick={togglePublish} className={`px-3 py-1.5 rounded-sm text-[10px] font-bold uppercase tracking-widest transition-all ${form.isPublished ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}>
             {form.isPublished ? 'Unpublish' : 'Publish'}
           </button>
-
           <button onClick={() => setShowShare(true)} className="bg-[#008272] text-white px-4 py-1.5 rounded-sm text-[10px] font-bold uppercase tracking-widest" style={{ backgroundColor: theme.primaryColor }}>Collect responses</button>
         </div>
       </nav>
 
-      <AnimatePresence>
-        {showAIPane && (
-          <motion.div initial={{ x: 300 }} animate={{ x: 0 }} exit={{ x: 300 }} className="fixed right-0 top-12 bottom-0 w-80 bg-white shadow-2xl z-[70] border-l p-6 overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-600 flex items-center gap-2">
-                <span className="text-lg">✨</span> Gemini AI Assistant
-              </h3>
-              <button onClick={() => setShowAIPane(false)} className="text-gray-400 hover:text-black text-xl font-bold">&times;</button>
-            </div>
-
-            <div className="space-y-6">
-              <section>
-                <label className="text-[9px] font-bold text-gray-400 uppercase mb-2 block">Generate Questions</label>
-                <div className="relative">
-                  <textarea 
-                    value={aiPrompt}
-                    onChange={e => setAiPrompt(e.target.value)}
-                    placeholder="e.g. A customer satisfaction survey for a sushi restaurant..."
-                    className="w-full p-4 bg-indigo-50/50 border border-indigo-100 rounded text-xs focus:ring-1 focus:ring-indigo-400 outline-none min-h-[100px] resize-none"
-                  />
-                  <button 
-                    disabled={isAiLoading || !aiPrompt}
-                    onClick={handleGenerateAI}
-                    className="w-full mt-2 bg-indigo-600 text-white py-3 rounded text-[10px] font-black uppercase tracking-widest shadow-md hover:bg-indigo-700 disabled:opacity-50 transition-all"
-                  >
-                    {isAiLoading ? 'Magic in progress...' : 'Generate with AI'}
-                  </button>
-                </div>
-              </section>
-
-              <div className="h-px bg-gray-100" />
-
-              <section>
-                <label className="text-[9px] font-bold text-gray-400 uppercase mb-2 block">Visual Magic</label>
-                <button 
-                  disabled={isAiLoading}
-                  onClick={handleAISuggestTheme}
-                  className="w-full flex items-center justify-center gap-2 p-4 border border-indigo-200 rounded text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:bg-indigo-50 transition-all"
-                >
-                  <span className="text-sm">🎨</span> Suggest Theme from Content
-                </button>
-              </section>
-
-              <div className="p-4 bg-gray-50 rounded-lg border border-dashed">
-                <p className="text-[8px] text-gray-400 font-bold uppercase leading-relaxed">
-                  Tip: Gemini works best with descriptive prompts. Try including the target audience and specific goals of your form.
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {showThemePane && (
-          <motion.div initial={{ x: 300 }} animate={{ x: 0 }} exit={{ x: 300 }} className="fixed right-0 top-12 bottom-0 w-80 bg-white shadow-2xl z-[70] border-l p-6 overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-[#008272]">Style Pane</h3>
-              <button onClick={() => setShowThemePane(false)} className="text-gray-400 hover:text-black text-xl font-bold">&times;</button>
-            </div>
-            
-            <section className="mb-8">
-               <h4 className="text-[9px] font-bold text-gray-400 uppercase mb-4">Header Customization</h4>
-               <div className="space-y-4">
-                  <button 
-                    onClick={() => headerFileRef.current?.click()}
-                    disabled={isUploadingMedia}
-                    className="w-full p-3 border-2 border-dashed rounded text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 text-[#008272] disabled:opacity-50"
-                  >
-                    {isUploadingMedia ? 'Uploading to Cloudinary...' : 'Upload Header Background'}
-                  </button>
-                  <input ref={headerFileRef} type="file" className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'header')} />
-                  
-                  <button 
-                    onClick={() => logoFileRef.current?.click()}
-                    disabled={isUploadingMedia}
-                    className="w-full p-3 border-2 border-dashed rounded text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 text-[#008272] disabled:opacity-50"
-                  >
-                    {isUploadingMedia ? 'Uploading to Cloudinary...' : 'Upload Logo'}
-                  </button>
-                  <input ref={logoFileRef} type="file" className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'logo')} />
-               </div>
-
-               {theme.logoUrl && (
-                 <div className="mt-6 p-4 bg-gray-50 rounded space-y-4">
-                    <h5 className="text-[9px] font-bold uppercase text-gray-400">Logo Controls</h5>
-                    <div className="space-y-2">
-                       <p className="text-[9px] font-bold text-gray-500 uppercase">Alignment</p>
-                       <div className="flex gap-2">
-                          {['left', 'center', 'right'].map(align => (
-                            <button 
-                              key={align} 
-                              onClick={() => updateForm({ theme: { ...theme, logoAlignment: align as any } })}
-                              className={`flex-1 py-1 text-[8px] font-black uppercase border rounded ${theme.logoAlignment === align ? 'bg-[#008272] text-white border-[#008272]' : 'bg-white text-gray-400'}`}
-                            >
-                              {align}
-                            </button>
-                          ))}
-                       </div>
-                    </div>
-                    <div className="space-y-2">
-                       <p className="text-[9px] font-bold text-gray-500 uppercase">Scale: {theme.logoScale || 100}%</p>
-                       <input 
-                         type="range" min="20" max="200" 
-                         value={theme.logoScale || 100} 
-                         onChange={e => updateForm({ theme: { ...theme, logoScale: parseInt(e.target.value) } })}
-                         className="w-full accent-[#008272]"
-                       />
-                    </div>
-                    <button onClick={() => updateForm({ theme: { ...theme, logoUrl: undefined } })} className="w-full py-2 text-[8px] text-red-500 font-bold uppercase border border-red-100 hover:bg-red-50 rounded">Remove Logo</button>
-                 </div>
-               )}
-            </section>
-
-            <section className="mb-8">
-               <h4 className="text-[9px] font-bold text-gray-400 uppercase mb-4">Stock Image Headers</h4>
-               <div className="grid grid-cols-2 gap-2 mb-4">
-                 {STOCK_HEADER_MEDIA.map((stock, i) => (
-                   <button 
-                      key={i} 
-                      onClick={() => {
-                        if (stock.type === 'none') {
-                          updateForm({ theme: { ...theme, headerBackgroundImage: undefined, headerBackgroundVideoUrl: undefined } });
-                        } else {
-                          updateForm({ theme: { ...theme, headerBackgroundImage: stock.url, headerBackgroundVideoUrl: undefined } });
-                        }
-                      }}
-                      className="h-16 rounded border bg-gray-100 overflow-hidden relative group"
-                    >
-                      {stock.type === 'none' ? <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-gray-400">NONE</div> : <img src={stock.url} className="w-full h-full object-cover" />}
-                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center">
-                        <span className="text-[7px] text-white font-bold uppercase">{stock.label}</span>
-                      </div>
-                   </button>
-                 ))}
-               </div>
-            </section>
-
-            <section className="mb-8">
-              <h4 className="text-[9px] font-bold text-gray-400 uppercase mb-4">Color & Image Themes</h4>
-              <div className="grid grid-cols-2 gap-3">
-                {THEME_PRESETS.map(preset => (
-                  <button 
-                    key={preset.id} 
-                    onClick={() => updateForm({ theme: { ...theme, primaryColor: preset.color, backgroundColor: (preset.bg?.startsWith('http') ? '#f3f2f1' : preset.bg || '#f3f2f1'), backgroundImage: preset.bg?.startsWith('http') ? preset.bg : undefined, backgroundVideoUrl: undefined, themePreset: preset.id } })}
-                    className={`h-24 rounded border-2 relative overflow-hidden group ${theme.themePreset === preset.id ? 'border-[#008272]' : 'border-transparent'}`}
-                    style={{ backgroundColor: preset.bg?.startsWith('http') ? '#eee' : preset.bg }}
-                  >
-                     {preset.bg?.startsWith('http') && <img src={preset.bg} className="w-full h-full object-cover" />}
-                     <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-all flex items-end p-2">
-                       <span className="text-[8px] text-white font-black uppercase tracking-widest">{preset.label}</span>
-                     </div>
-                  </button>
-                ))}
-              </div>
-            </section>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <main className="flex-1 py-10 relative">
         <div className="max-w-3xl mx-auto space-y-8 px-4">
-          <div className="bg-white/95 backdrop-blur-md rounded-md shadow-lg border-t-[10px] p-10 relative min-h-[400px] overflow-hidden" style={{ borderTopColor: theme.primaryColor }}>
+          <div className="bg-white rounded shadow-lg border-t-[10px] p-10 relative min-h-[400px]" style={{ borderTopColor: theme.primaryColor }}>
             <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
-              {theme.headerBackgroundVideoUrl && (
-                <video key={theme.headerBackgroundVideoUrl} src={theme.headerBackgroundVideoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover opacity-20" />
-              )}
-              {theme.headerBackgroundImage && (
-                <img src={theme.headerBackgroundImage} className="w-full h-full object-cover opacity-20" />
-              )}
+              {theme.headerBackgroundImage && <img src={theme.headerBackgroundImage} className="w-full h-full object-cover opacity-20" />}
             </div>
 
             {theme.logoUrl && (
-              <div 
-                className={`mb-6 flex ${theme.logoAlignment === 'center' ? 'justify-center' : (theme.logoAlignment === 'right' ? 'justify-end' : 'justify-start')}`}
-              >
-                 <img 
-                    src={theme.logoUrl} 
-                    style={{ width: `${(theme.logoScale || 100) * 0.8}px` }} 
-                    className="h-auto object-contain transition-all" 
-                    alt="Logo" 
-                 />
+              <div className={`mb-6 flex ${theme.logoAlignment === 'center' ? 'justify-center' : (theme.logoAlignment === 'right' ? 'justify-end' : 'justify-start')}`}>
+                 <img src={theme.logoUrl} style={{ width: `${(theme.logoScale || 100) * 0.8}px` }} className="h-auto object-contain transition-all" alt="Logo" />
               </div>
             )}
             
-            <motion.div 
-              drag dragMomentum={false} 
-              onDragEnd={(_, info) => updateForm({ titlePosition: { x: info.point.x, y: info.point.y } })}
-              className="relative group w-fit cursor-move mb-8"
-              onMouseEnter={() => setActiveBlock('title')}
-              onMouseLeave={() => setActiveBlock(null)}
-            >
+            <motion.div drag dragMomentum={false} className="relative group w-fit cursor-move mb-8" onMouseEnter={() => setActiveBlock('title')} onMouseLeave={() => setActiveBlock(null)}>
               {activeBlock === 'title' && <FormattingToolbar format={form.titleFormatting || {}} onChange={f => updateForm({ titleFormatting: f })} />}
-              <input 
-                type="text" value={form.title} 
+              <textarea 
+                value={form.title} 
                 onChange={e => updateForm({ title: e.target.value })} 
                 placeholder="Untitled Form"
-                className={`bg-transparent border-none focus:ring-0 outline-none w-full ${form.titleFormatting?.bold ? 'font-black' : 'font-normal'} ${form.titleFormatting?.italic ? 'italic' : ''}`}
+                className={`bg-transparent border-none focus:ring-0 outline-none w-full resize overflow-auto p-2 ${form.titleFormatting?.bold ? 'font-black' : 'font-normal'} ${form.titleFormatting?.italic ? 'italic' : ''}`}
                 style={{ 
                   fontSize: form.titleFormatting?.fontSize === 'large' ? '3rem' : (form.titleFormatting?.fontSize === 'small' ? '1.2rem' : '2.25rem'),
                   textAlign: form.titleFormatting?.textAlign || 'left',
-                  minWidth: '300px'
+                  minWidth: '300px',
+                  height: 'auto'
                 }} 
               />
             </motion.div>
 
             {(form.descriptions ?? []).map((desc) => (
-              <motion.div 
-                key={desc.id} drag dragMomentum={false}
-                className="relative group w-fit cursor-move mb-4"
-                onMouseEnter={() => setActiveBlock(desc.id)}
-                onMouseLeave={() => setActiveBlock(null)}
-              >
-                {activeBlock === desc.id && (
-                  <FormattingToolbar 
-                    format={desc.formatting || {}} 
-                    onChange={f => updateDescription(desc.id, { formatting: f })} 
-                  />
-                )}
+              <motion.div key={desc.id} drag dragMomentum={false} className="relative group w-fit cursor-move mb-4" onMouseEnter={() => setActiveBlock(desc.id)} onMouseLeave={() => setActiveBlock(null)}>
+                {activeBlock === desc.id && <FormattingToolbar format={desc.formatting || {}} onChange={f => updateDescription(desc.id, { formatting: f })} />}
                 <div className="absolute -left-8 top-1 opacity-0 group-hover:opacity-100 flex flex-col gap-1">
                   <button onClick={() => updateForm({ descriptions: (form.descriptions ?? []).filter(d => d.id !== desc.id) })} className="text-red-400 hover:text-red-600">✕</button>
                 </div>
@@ -446,14 +252,13 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
                   value={desc.text} 
                   onChange={e => updateDescription(desc.id, { text: e.target.value })} 
                   placeholder="Enter description..."
-                  className={`bg-transparent border-none focus:ring-0 outline-none resize-none ${desc.formatting?.bold ? 'font-bold' : ''} ${desc.formatting?.italic ? 'italic' : ''}`}
+                  className={`bg-transparent border-none focus:ring-0 outline-none p-2 resize overflow-auto ${desc.formatting?.bold ? 'font-bold' : ''} ${desc.formatting?.italic ? 'italic' : ''}`}
                   style={{ 
                     fontSize: desc.formatting?.fontSize === 'large' ? '1.5rem' : (desc.formatting?.fontSize === 'small' ? '0.75rem' : '0.9rem'),
                     textAlign: desc.formatting?.textAlign || 'left',
                     minWidth: '200px'
                   }}
-                  rows={1}
-                  onInput={e => { e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px'; }}
+                  rows={2}
                 />
               </motion.div>
             ))}
@@ -461,7 +266,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
             <button onClick={addDescription} className="mt-8 text-[9px] font-black uppercase tracking-widest text-[#008272] hover:underline">+ Add Draggable Description Box</button>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-6">
             {(form.questions ?? []).map((q, idx) => (
               <QuestionCard 
                 key={q.id} question={q} number={idx + 1} allQuestions={form.questions ?? []}
@@ -480,7 +285,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
             ))}
           </div>
 
-          <div className="bg-white p-8 rounded-md border shadow-sm mb-20">
+          <div className="bg-white p-8 rounded border shadow-sm mb-20">
              <div className="grid grid-cols-4 md:grid-cols-7 gap-3">
                 {[
                   { type: QuestionType.CHOICE, label: 'Choice', icon: '🔘' },

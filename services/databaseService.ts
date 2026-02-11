@@ -45,6 +45,7 @@ export const saveResponse = async (formId: string, response: FormResponse) => {
   try {
     const respRef = db.ref(`responses/${formId}/${response.id}`);
     await respRef.set(response);
+    await db.ref(`forms/${formId}/lastActivity`).set(new Date().toISOString());
     return true;
   } catch (e) {
     console.error("Firebase Response Save Failed:", e);
@@ -52,9 +53,6 @@ export const saveResponse = async (formId: string, response: FormResponse) => {
   }
 };
 
-/**
- * FETCH SINGLE FORM (Used for Real-time QR/Deep Links)
- */
 export const getFormById = async (formId: string): Promise<Form | null> => {
   try {
     const formRef = db.ref(`forms/${formId}`);
@@ -62,13 +60,13 @@ export const getFormById = async (formId: string): Promise<Form | null> => {
     
     if (snapshot.exists()) {
       const f = snapshot.val();
-      
       const respSnapshot = await db.ref(`responses/${f.id}`).once('value');
       const responses = respSnapshot.exists() ? Object.values(respSnapshot.val()) : [];
       
-      // Strict rehydration: Ensure ALL questions are included and valid
       const rawQuestions = f.questions || [];
       const cleanedQuestions = Array.isArray(rawQuestions) ? rawQuestions : Object.values(rawQuestions);
+      const rawDescriptions = f.descriptions || [];
+      const cleanedDescriptions = Array.isArray(rawDescriptions) ? rawDescriptions : Object.values(rawDescriptions);
 
       return {
         ...f,
@@ -78,7 +76,7 @@ export const getFormById = async (formId: string): Promise<Form | null> => {
           ...q,
           options: q.options ? (Array.isArray(q.options) ? q.options : Object.values(q.options)) : []
         })),
-        descriptions: f.descriptions ? (Array.isArray(f.descriptions) ? f.descriptions : Object.values(f.descriptions)) : []
+        descriptions: cleanedDescriptions
       } as Form;
     }
   } catch (e) {
@@ -104,13 +102,24 @@ export const saveForm = async (uid: string, form: Form) => {
   try {
     const formRef = db.ref(`forms/${form.id}`);
     const { responses, ...formWithoutResponses } = form;
+    
+    // Ensure nested objects aren't lost in translation
     const dbForm = {
       ...formWithoutResponses,
       ownerUid: uid,
-      published: !!form.isPublished 
+      published: !!form.isPublished,
+      lastActivity: new Date().toISOString(),
+      // Force serialization for firebase safety
+      questions: form.questions.map(q => ({
+        ...q,
+        options: q.options || null
+      })),
+      descriptions: form.descriptions || []
     };
     await formRef.set(dbForm);
-  } catch (err: any) { }
+  } catch (err: any) {
+    console.error("Firebase Form Save Failed:", err);
+  }
 };
 
 export const getUserForms = async (uid: string): Promise<Form[]> => {
@@ -143,7 +152,7 @@ export const getUserForms = async (uid: string): Promise<Form[]> => {
           descriptions: dList,
           isPublished: f.published ?? f.isPublished ?? false,
           responses: responses || []
-        };
+        } as Form;
       }));
     }
   } catch (err) { }
@@ -159,7 +168,7 @@ export const loadDatabase = async (): Promise<User[]> => {
       const usersArray = Object.values(usersData) as any[];
       const cloudData = await Promise.all(usersArray.map(async (u) => {
         const forms = await getUserForms(u.id);
-        return { ...u, forms: forms || [] };
+        return { ...u, forms: forms || [] } as User;
       }));
       if (cloudData.length > 0) {
         setLocalData(cloudData);

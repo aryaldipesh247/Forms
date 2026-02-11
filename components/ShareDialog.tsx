@@ -1,6 +1,7 @@
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState } from 'react';
 
+// ShareDialog component for generating and copying the form preview link
 interface ShareDialogProps {
   formId: string;
   isPublished?: boolean;
@@ -9,98 +10,102 @@ interface ShareDialogProps {
 
 const ShareDialog: React.FC<ShareDialogProps> = ({ formId, isPublished, onClose }) => {
   const [copied, setCopied] = useState(false);
+  const [showQR, setShowQR] = useState(false);
   
-  const shareUrl = useMemo(() => {
-    // Standardizing the base URL to prevent broken hash links
-    const origin = window.location.origin;
-    const path = window.location.pathname.endsWith('/') 
-      ? window.location.pathname 
-      : window.location.pathname + '/';
-    return `${origin}${path}#preview/${formId}`;
-  }, [formId]);
+  // Construct the absolute URL for the form preview using the hash routing logic in App.tsx
+  const shareUrl = `${window.location.origin}${window.location.pathname}#preview/${formId}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shareUrl)}`;
 
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(shareUrl)}&bgcolor=ffffff&color=008272`;
-
-  const copyToClipboard = useCallback(async () => {
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(shareUrl);
-      } else {
-        const textArea = document.createElement("textarea");
-        textArea.value = shareUrl;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-      }
+  const handleCopy = () => {
+    // Copy the constructed share URL to the user's clipboard
+    navigator.clipboard.writeText(shareUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Copy failed", err);
-    }
-  }, [shareUrl]);
+    }).catch(err => {
+      console.error('Failed to copy text: ', err);
+      alert('Failed to copy link. Please manually copy the URL from the input field.');
+    });
+  };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-xl flex items-center justify-center z-[200] p-6 animate-in fade-in duration-200" onClick={onClose}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      {/* Backdrop for the modal to dismiss on click outside */}
       <div 
-        className="bg-white rounded-[2rem] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)] max-w-md w-full p-10 text-black border border-white/20 relative overflow-hidden animate-in zoom-in duration-300"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex justify-between items-start mb-10">
-          <div>
-            <h2 className="text-4xl font-black text-[#008272] tracking-tighter leading-none mb-2">Share Link</h2>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Deploy to respondents</p>
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm" 
+        onClick={onClose} 
+      />
+      
+      {/* Modal content area with professional styling matching FORMS PRO brand */}
+      <div className="relative bg-white w-full max-w-md rounded-xl shadow-2xl border overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="bg-[#008272] p-6 text-white">
+          <div className="flex justify-between items-center mb-1">
+            <h3 className="text-lg font-black uppercase tracking-widest">Collect Responses</h3>
+            <button onClick={onClose} className="text-2xl font-bold leading-none hover:opacity-70 transition-opacity">&times;</button>
           </div>
-          <button onClick={onClose} className="text-gray-300 hover:text-red-500 text-4xl transition-colors leading-none">&times;</button>
+          <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Share your form with the world</p>
         </div>
 
-        {!isPublished && (
-          <div className="mb-10 p-5 bg-amber-50 border-l-4 border-amber-400 rounded-r-2xl flex gap-4 animate-pulse">
-             <span className="text-2xl">⚠️</span>
-             <div>
-               <p className="text-[10px] font-black uppercase text-amber-700 tracking-wider">Draft Mode Active</p>
-               <p className="text-[10px] text-amber-600 mt-1 font-bold">Respondents cannot submit until you click "Publish" in the main editor.</p>
-             </div>
-          </div>
-        )}
-
-        <div className="flex flex-col items-center mb-10 bg-[#faf9f8] p-10 rounded-[2rem] border-2 border-dashed border-[#edebe9] group transition-all">
-          <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-100 mb-6 group-hover:scale-105 transition-transform duration-300 relative overflow-hidden">
-            <img 
-              src={qrUrl} 
-              alt="QR Code" 
-              className="w-48 h-48 object-contain" 
-              loading="lazy"
-              onError={(e) => {
-                e.currentTarget.src = 'https://via.placeholder.com/200?text=QR+Error';
-              }}
-            />
-          </div>
-          <p className="text-[11px] font-black uppercase tracking-[0.5em] text-[#008272]">Scan for instant access</p>
-        </div>
-
-        <div className="space-y-8">
-          <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase text-gray-400 tracking-[0.4em] ml-1">Universal Link</label>
-            <div className="flex gap-3">
-              <input readOnly value={shareUrl} className="flex-1 p-4 bg-gray-50 border-2 border-[#edebe9] rounded-2xl text-xs font-black truncate focus:outline-none focus:border-[#008272] transition-colors" />
-              <button 
-                onClick={copyToClipboard} 
-                className={`px-8 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl active:scale-95 ${copied ? 'bg-green-600 text-white' : 'bg-[#008272] text-white hover:brightness-110'}`}
-              >
-                {copied ? 'Copied!' : 'Copy'}
-              </button>
+        <div className="p-8 space-y-6">
+          {/* Informative alert if the form is currently in draft mode */}
+          {!isPublished && (
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg flex gap-3">
+              <span className="text-xl">⚠️</span>
+              <div>
+                <p className="text-[10px] font-black text-amber-800 uppercase tracking-wider">Form is not published</p>
+                <p className="text-[10px] text-amber-700 font-medium mt-1">Respondents won't be able to view or submit this form until you click "Publish" in the editor.</p>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="grid grid-cols-2 gap-4">
-             <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent('Please fill this form: ' + shareUrl)}`, '_blank')} className="flex items-center justify-center gap-3 p-4 bg-green-50 text-green-700 border-2 border-green-100 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-green-100 transition-all shadow-sm">WhatsApp</button>
-             <button onClick={() => window.location.href = `mailto:?subject=Survey Request&body=${encodeURIComponent('Please complete this form: ' + shareUrl)}`} className="flex items-center justify-center gap-3 p-4 bg-blue-50 text-blue-700 border-2 border-blue-100 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-all shadow-sm">Email Link</button>
-          </div>
+          {!showQR ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Form Link</label>
+                <div className="flex gap-2">
+                  <input 
+                    readOnly 
+                    value={shareUrl} 
+                    className="flex-1 p-3 bg-gray-50 border border-[#edebe9] rounded text-xs font-mono text-gray-600 focus:outline-none"
+                    onFocus={(e) => e.target.select()}
+                  />
+                  <button 
+                    onClick={handleCopy}
+                    className={`px-4 py-2 rounded font-black uppercase text-[10px] tracking-widest transition-all ${copied ? 'bg-green-600 text-white' : 'bg-[#008272] text-white hover:bg-[#006a5d]'}`}
+                  >
+                    {copied ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t flex justify-center gap-6">
+                <button onClick={() => setShowQR(true)} className="text-center group cursor-pointer outline-none">
+                  <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-2 mx-auto border group-hover:bg-gray-100 transition-colors">
+                    <span className="text-xl">📱</span>
+                  </div>
+                  <p className="text-[8px] font-black text-gray-400 uppercase">Show QR Code</p>
+                </button>
+                <div className="text-center group opacity-40">
+                  <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-2 mx-auto border">
+                    <span className="text-xl">📧</span>
+                  </div>
+                  <p className="text-[8px] font-black text-gray-400 uppercase">Email</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-4 py-4">
+               <p className="text-[10px] font-black text-[#008272] uppercase tracking-widest">Scan to Open Form</p>
+               <div className="p-4 bg-white border-2 border-gray-100 rounded-xl shadow-inner">
+                  <img src={qrUrl} alt="QR Code" className="w-48 h-48" />
+               </div>
+               <button onClick={() => setShowQR(false)} className="text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-black">← Back to Link</button>
+            </div>
+          )}
         </div>
-        
-        <div className="mt-12 pt-8 border-t border-gray-50 text-center">
-          <p className="text-[10px] font-black text-gray-200 uppercase tracking-[0.6em]">Secure Protocol | Forms PRO</p>
+
+        <div className="bg-gray-50 px-8 py-4 flex justify-between items-center border-t">
+          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Forms Pro | Multi-Device Sync</span>
+          <button onClick={onClose} className="text-[10px] font-black text-[#008272] uppercase tracking-widest hover:underline">Close</button>
         </div>
       </div>
     </div>
