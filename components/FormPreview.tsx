@@ -73,6 +73,8 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
   /**
    * DYNAMIC BRANCHING LOGIC
    * Calculates the ordered path of visible questions based on answers and rules.
+   * FIX: Choice Option Branching now has absolute priority. 
+   * Even if Option is set to "Next", it will skip the "Question Default" jump.
    */
   const visibleQuestions = useMemo(() => {
     if (!form || !form.questions.length) return [];
@@ -93,20 +95,23 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
       const answer = answers[q.id];
       let nextId: string | 'next' | 'end' = 'next';
 
-      // 1. Check Option-level Branching (Only if single selection choice)
+      // 1. Identify Target: PRIORITY 1: Specific Option Branch (Only if single selection choice)
       if (q.type === QuestionType.CHOICE && !q.multipleSelection && answer) {
         const selectedOpt = q.options?.find(o => o.text === answer);
+        // If the option specifically defines a destination (even if it is 'next'), 
+        // it marks the decision point and overrides question-level defaults.
         if (selectedOpt?.branching?.nextQuestionId) {
           nextId = selectedOpt.branching.nextQuestionId;
+        } else if (q.enableBranching && q.branching?.nextQuestionId) {
+          // PRIORITY 2: Fallback to Question-level Default Branching if no option branch exists
+          nextId = q.branching.nextQuestionId;
         }
-      }
-
-      // 2. Check Question-level Branching if no specific option branch
-      if (nextId === 'next' && q.enableBranching && q.branching?.nextQuestionId) {
+      } else if (q.enableBranching && q.branching?.nextQuestionId) {
+        // Fallback for non-choice questions or multi-choice
         nextId = q.branching.nextQuestionId;
       }
 
-      // Resolve 'next' to the physical next question in the array
+      // 2. Resolve 'next' to the physical next question in the array
       if (nextId === 'next') {
         const currentIndex = questions.findIndex(x => x.id === q.id);
         const nextPhysical = questions[currentIndex + 1];
@@ -115,8 +120,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
         currentId = nextId;
       }
 
-      // Stop revealing questions if a required question isn't answered yet
-      // This creates a "progressive reveal" effect common in professional forms
+      // 3. Stop revealing questions if a required question isn't answered yet
       if (q.required && (!answer || (Array.isArray(answer) && answer.length === 0))) {
         break;
       }

@@ -24,14 +24,17 @@ const FormatToolbar: React.FC<{ format: TextFormat, onChange: (f: TextFormat) =>
 );
 
 const BranchingSelector: React.FC<{ value?: BranchingConfig, questions: Question[], onChange: (v: BranchingConfig) => void }> = ({ value, questions, onChange }) => (
-  <div className="flex items-center gap-2 mt-2 ml-4 p-2 bg-teal-50/30 rounded border border-dashed border-teal-100">
-    <span className="text-[9px] font-bold uppercase text-gray-400">Go to:</span>
+  <div className="flex items-center gap-2 mt-2 ml-4 p-2 bg-teal-50/50 rounded-lg border border-teal-100 transition-all hover:border-teal-300">
+    <span className="text-[10px] font-black uppercase text-[#008272] flex items-center gap-1.5">
+      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+      Go to:
+    </span>
     <select 
       value={value?.nextQuestionId || 'next'} 
       onChange={(e) => onChange({ nextQuestionId: e.target.value as any })}
-      className="text-[10px] bg-transparent border-none outline-none font-bold text-[#008272] cursor-pointer"
+      className="text-[10px] bg-transparent border-none outline-none font-black text-[#008272] cursor-pointer"
     >
-      <option value="next">Next Question</option>
+      <option value="next">Next Question (Default)</option>
       <option value="end">End of Form</option>
       {questions.map((q, idx) => (
         <option key={q.id} value={q.id}>Q{idx + 1}: {q.title.substring(0, 30)}...</option>
@@ -70,9 +73,17 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
     updateProp('options', newOptions);
   };
 
-  const updateOption = (id: string, text: string, branching?: BranchingConfig) => {
-    const newOptions = (localQuestion.options || []).map(o => o.id === id ? { ...o, text: text !== undefined ? text : o.text, branching: branching || o.branching } : o);
-    updateProp('options', newOptions);
+  const updateOption = (id: string, text?: string, branching?: BranchingConfig) => {
+    const newOptions = (localQuestion.options || []).map(o => 
+      o.id === id ? { 
+        ...o, 
+        text: text !== undefined ? text : o.text, 
+        branching: branching !== undefined ? branching : o.branching 
+      } : o
+    );
+    // Logic/Branching changes should be synced immediately to avoid redirection issues
+    const isLogicUpdate = branching !== undefined;
+    updateProp('options', newOptions, isLogicUpdate);
   };
 
   const moveOption = (index: number, direction: 'up' | 'down') => {
@@ -170,11 +181,11 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                     <button onClick={() => updateProp('options', localQuestion.options?.filter(o => o.id !== opt.id))} className="text-gray-300 hover:text-red-500">✕</button>
                   </div>
                 </div>
-                {localQuestion.enableBranching && (
+                {localQuestion.enableBranching && !localQuestion.multipleSelection && (
                   <BranchingSelector 
                     questions={allQuestions.filter(aq => aq.id !== localQuestion.id)} 
                     value={opt.branching} 
-                    onChange={v => updateOption(opt.id, opt.text, v)} 
+                    onChange={v => updateOption(opt.id, undefined, v)} 
                   />
                 )}
               </div>
@@ -195,7 +206,12 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                         />
                         <div className="w-8 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#008272]"></div>
                       </div>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover/toggle:text-[#008272] transition-colors">Multiple Answers</span>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover/toggle:text-[#008272] transition-colors">Multiple Answers</span>
+                        {localQuestion.enableBranching && localQuestion.multipleSelection && (
+                          <span className="text-[8px] font-bold text-amber-500 uppercase tracking-tighter italic">Option-branching disabled in multi-mode</span>
+                        )}
+                      </div>
                     </label>
                   )}
                </div>
@@ -270,7 +286,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                       onChange={(e) => updateProp('branching', { nextQuestionId: e.target.value }, true)}
                       className="w-full text-[10px] font-bold bg-white border p-1 rounded"
                     >
-                      <option value="next">Next Question</option>
+                      <option value="next">Next Question (Default)</option>
                       <option value="end">End of Form</option>
                       {allQuestions.filter(aq => aq.id !== localQuestion.id).map((aq, i) => (
                         <option key={aq.id} value={aq.id}>Q{i+1}: {aq.title.substring(0, 20)}...</option>
