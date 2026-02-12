@@ -9,7 +9,7 @@ import RecycleBin from './components/RecycleBin';
 import Auth, { hashPassword } from './components/Auth';
 import Settings from './components/Settings';
 import { db } from './services/firebase';
-import { saveDatabase, loadDatabase, deleteUserCompletely, getFormById, saveResponse, saveForm, deleteFormPermanently } from './services/databaseService';
+import { saveDatabase, loadDatabase, deleteUserCompletely, getFormById, saveResponse, saveForm, deleteFormPermanently, clearFormResponses } from './services/databaseService';
 
 const SESSION_KEY = 'forms_pro_active_session_v1';
 
@@ -314,10 +314,35 @@ const App: React.FC = () => {
           <ResponseDashboard 
             form={activeForm} 
             onBack={() => setCurrentView('editor')} 
-            onArchiveResponses={() => {
-              if (!currentUser) return;
-              const archive: ResponseArchive = { id: Math.random().toString(36).substr(2, 9), deletedAt: new Date().toISOString(), responses: [...activeForm.responses], formTitle: activeForm.title, formId: activeForm.id };
-              handleUpdateForms(currentUser.forms.map(f => f.id === activeForm.id ? { ...f, responses: [], archivedResponseSets: [...(f.archivedResponseSets || []), archive] } : f));
+            onArchiveResponses={async () => {
+              if (!currentUser || !activeForm) return;
+              if (!confirm('Are you sure you want to clear all responses? This will move them to the Recycle Bin archives.')) return;
+              
+              setIsSyncing(true);
+              try {
+                // 1. Create the archive entry locally
+                const archive: ResponseArchive = { 
+                  id: Math.random().toString(36).substr(2, 9), 
+                  deletedAt: new Date().toISOString(), 
+                  responses: [...activeForm.responses], 
+                  formTitle: activeForm.title, 
+                  formId: activeForm.id 
+                };
+                
+                // 2. Physically remove responses from the cloud dedicated node
+                await clearFormResponses(activeForm.id);
+                
+                // 3. Update the form metadata (add archive set, clear local response array)
+                const updatedForms = currentUser.forms.map(f => 
+                  f.id === activeForm.id 
+                    ? { ...f, responses: [], archivedResponseSets: [...(f.archivedResponseSets || []), archive] } 
+                    : f
+                );
+                
+                await handleUpdateForms(updatedForms);
+              } finally {
+                setIsSyncing(false);
+              }
             }} 
             onEditQuestion={() => setCurrentView('editor')} 
             onUpdateForm={f => handleUpdateForms(currentUser!.forms.map(item => item.id === f.id ? f : item))} 
