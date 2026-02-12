@@ -146,23 +146,23 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
         {localQuestion.type === QuestionType.DOUBLE_RANKING_BOX && (
            <div className="space-y-4">
               <div className="grid grid-cols-[1.5fr_2fr_0.5fr_100px] gap-4 mb-2">
-                 <span className="text-[10px] font-black uppercase text-gray-400">Row Item</span>
-                 <input type="text" value={localQuestion.columnName || 'Big Box'} onChange={e => updateProp('columnName', e.target.value)} className="text-[10px] font-bold text-center border-b outline-none bg-transparent" placeholder="Header Left" />
-                 <input type="text" value={localQuestion.columnNameSmall || 'Small'} onChange={e => updateProp('columnNameSmall', e.target.value)} className="text-[10px] font-bold text-center border-b outline-none bg-transparent" placeholder="Header Right" />
+                 <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Item</span>
+                 <input type="text" value={localQuestion.columnName || 'Detail'} onChange={e => updateProp('columnName', e.target.value)} className="text-[10px] font-black uppercase text-center border-b outline-none bg-transparent text-gray-400" placeholder="Detail Header" />
+                 <input type="text" value={localQuestion.columnNameSmall || 'Value'} onChange={e => updateProp('columnNameSmall', e.target.value)} className="text-[10px] font-black uppercase text-center border-b outline-none bg-transparent text-gray-400" placeholder="Value Header" />
               </div>
               {localQuestion.options?.map((opt, idx) => (
                 <div key={opt.id} className="grid grid-cols-[1.5fr_2fr_0.5fr_100px] gap-4 items-center">
-                  <input type="text" value={opt.text} onChange={e => updateOption(opt.id, e.target.value)} className="text-sm font-bold border-none bg-transparent focus:ring-0 outline-none" placeholder="Row Label" />
-                  <div className="h-10 bg-gray-50 border rounded flex items-center justify-center text-[10px] text-gray-300">Big Answer Box</div>
-                  <div className="h-10 bg-gray-50 border rounded flex items-center justify-center text-[10px] text-gray-300">Sm</div>
+                  <input type="text" value={opt.text} onChange={e => updateOption(opt.id, e.target.value)} className="text-sm font-black uppercase tracking-wider text-[#323130] border-none bg-transparent focus:ring-0 outline-none" placeholder="Row Label" />
+                  <div className="h-10 bg-white border border-gray-100 rounded-lg flex items-center px-3 text-[10px] text-gray-300 font-bold">Response Box...</div>
+                  <div className="h-10 bg-white border border-gray-100 rounded-lg flex items-center justify-center text-[10px] text-gray-300 font-black">Value</div>
                   <div className="flex gap-2">
-                    <button onClick={() => moveOption(idx, 'up')} disabled={idx === 0} className="text-gray-400">↑</button>
-                    <button onClick={() => moveOption(idx, 'down')} disabled={idx === (localQuestion.options?.length || 0) - 1} className="text-gray-400">↓</button>
+                    <button onClick={() => moveOption(idx, 'up')} disabled={idx === 0} className="text-gray-400 hover:text-[#008272]">↑</button>
+                    <button onClick={() => moveOption(idx, 'down')} disabled={idx === (localQuestion.options?.length || 0) - 1} className="text-gray-400 hover:text-[#008272]">↓</button>
                     <button onClick={() => updateProp('options', localQuestion.options?.filter(o => o.id !== opt.id))} className="text-gray-300 hover:text-red-500">✕</button>
                   </div>
                 </div>
               ))}
-              <button onClick={addOption} className="text-[10px] font-bold uppercase tracking-widest text-[#008272]">+ Add Option Row</button>
+              <button onClick={addOption} className="text-[10px] font-black uppercase tracking-widest text-[#008272] mt-4">+ Add Row Item</button>
            </div>
         )}
 
