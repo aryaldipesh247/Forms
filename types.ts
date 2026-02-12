@@ -1,3 +1,4 @@
+
 export enum QuestionType {
   CHOICE = 'CHOICE',
   TEXT = 'TEXT',
@@ -50,6 +51,7 @@ export interface FormResponse {
   timestamp: string;
   answers: Record<string, any>;
   serialNumber: number;
+  category?: 'ALCOHOL' | 'VALUABLE' | 'NON_VALUABLE' | 'GENERAL';
 }
 
 export interface ResponseArchive {
