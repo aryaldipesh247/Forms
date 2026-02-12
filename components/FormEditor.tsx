@@ -426,7 +426,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
                   value={desc.text} 
                   onChange={e => updateDescription(desc.id, { text: e.target.value })} 
                   placeholder="Enter description..."
-                  className={`bg-transparent border-none focus:ring-0 outline-none resize-none ${desc.formatting?.bold ? 'font-bold' : ''} ${desc.formatting?.italic ? 'italic' : ''}`}
+                  className={`bg-transparent border-none focus:ring-0 outline-none resize-none overflow-hidden ${desc.formatting?.bold ? 'font-bold' : ''} ${desc.formatting?.italic ? 'italic' : ''}`}
                   style={{ 
                     fontSize: desc.formatting?.fontSize === 'large' ? '1.5rem' : (desc.formatting?.fontSize === 'small' ? '0.75rem' : '0.9rem'),
                     textAlign: desc.formatting?.textAlign || 'left',

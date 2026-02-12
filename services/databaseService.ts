@@ -62,6 +62,16 @@ export const saveResponse = async (formId: string, response: FormResponse) => {
   }
 };
 
+export const clearFormResponses = async (formId: string) => {
+  try {
+    await db.ref(`responses/${formId}`).remove();
+    return true;
+  } catch (e) {
+    console.error("Firebase Response Clear Failed:", e);
+    return false;
+  }
+};
+
 export const getFormById = async (formId: string): Promise<Form | null> => {
   try {
     const formRef = db.ref(`forms/${formId}`);
@@ -121,11 +131,12 @@ export const deleteUserCompletely = async (userId: string, forms: Form[]) => {
 export const saveForm = async (uid: string, form: Form) => {
   try {
     const formRef = db.ref(`forms/${form.id}`);
-    // Exclude 'responses' and 'archivedResponseSets' to prevent bloating the form node
-    const { responses, archivedResponseSets, ...formWithoutLargeData } = form;
+    // Exclude 'responses' to prevent bloating the form node, 
+    // but include 'archivedResponseSets' so metadata about deleted responses persists.
+    const { responses, ...formWithoutResponses } = form;
     
     const dbForm = sanitizeForFirebase({
-      ...formWithoutLargeData,
+      ...formWithoutResponses,
       ownerUid: uid,
       published: !!form.isPublished,
       lastActivity: new Date().toISOString()
@@ -157,6 +168,7 @@ export const getUserForms = async (uid: string): Promise<Form[]> => {
         
         const qList = f.questions ? (Array.isArray(f.questions) ? f.questions : Object.values(f.questions)) : [];
         const dList = f.descriptions ? (Array.isArray(f.descriptions) ? f.descriptions : Object.values(f.descriptions)) : [];
+        const aList = f.archivedResponseSets ? (Array.isArray(f.archivedResponseSets) ? f.archivedResponseSets : Object.values(f.archivedResponseSets)) : [];
 
         return {
           ...f,
@@ -165,6 +177,7 @@ export const getUserForms = async (uid: string): Promise<Form[]> => {
             options: q.options ? (Array.isArray(q.options) ? q.options : Object.values(q.options)) : [] 
           })),
           descriptions: dList,
+          archivedResponseSets: aList,
           isPublished: f.published ?? f.isPublished ?? false,
           responses: responses || []
         } as Form;

@@ -1,5 +1,4 @@
-
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Form, QuestionType, Question } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { uploadImageToCloudinary } from '../services/cloudinaryService';
@@ -18,7 +17,7 @@ const ImageUploadQuestion = ({ q, value, onAnswer }: { q: Question, value: any, 
         onAnswer(url);
       } catch (error) {
         console.error('Respondent upload failed:', error);
-        alert('Failed to upload image. Please try again.');
+        alert('Failed to upload image.');
       } finally {
         setIsUploading(false);
       }
@@ -70,62 +69,34 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
   const [ticketNumber, setTicketNumber] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  /**
-   * DYNAMIC BRANCHING LOGIC
-   * Calculates the ordered path of visible questions based on answers and rules.
-   * FIX: Choice Option Branching now has absolute priority. 
-   * Even if Option is set to "Next", it will skip the "Question Default" jump.
-   */
   const visibleQuestions = useMemo(() => {
     if (!form || !form.questions.length) return [];
-    
     const questions = form.questions;
     const path: Question[] = [];
     const visited = new Set<string>();
-    
     let currentId: string | 'end' | 'next' = questions[0].id;
 
     while (currentId && currentId !== 'end') {
       const q = questions.find(x => x.id === currentId);
       if (!q || visited.has(q.id)) break;
-      
       path.push(q);
       visited.add(q.id);
-
       const answer = answers[q.id];
       let nextId: string | 'next' | 'end' = 'next';
-
-      // 1. Identify Target: PRIORITY 1: Specific Option Branch (Only if single selection choice)
       if (q.type === QuestionType.CHOICE && !q.multipleSelection && answer) {
         const selectedOpt = q.options?.find(o => o.text === answer);
-        // If the option specifically defines a destination (even if it is 'next'), 
-        // it marks the decision point and overrides question-level defaults.
-        if (selectedOpt?.branching?.nextQuestionId) {
-          nextId = selectedOpt.branching.nextQuestionId;
-        } else if (q.enableBranching && q.branching?.nextQuestionId) {
-          // PRIORITY 2: Fallback to Question-level Default Branching if no option branch exists
-          nextId = q.branching.nextQuestionId;
-        }
+        if (selectedOpt?.branching?.nextQuestionId) nextId = selectedOpt.branching.nextQuestionId;
+        else if (q.enableBranching && q.branching?.nextQuestionId) nextId = q.branching.nextQuestionId;
       } else if (q.enableBranching && q.branching?.nextQuestionId) {
-        // Fallback for non-choice questions or multi-choice
         nextId = q.branching.nextQuestionId;
       }
-
-      // 2. Resolve 'next' to the physical next question in the array
       if (nextId === 'next') {
         const currentIndex = questions.findIndex(x => x.id === q.id);
         const nextPhysical = questions[currentIndex + 1];
         currentId = nextPhysical ? nextPhysical.id : 'end';
-      } else {
-        currentId = nextId;
-      }
-
-      // 3. Stop revealing questions if a required question isn't answered yet
-      if (q.required && (!answer || (Array.isArray(answer) && answer.length === 0))) {
-        break;
-      }
+      } else currentId = nextId;
+      if (q.required && (!answer || (Array.isArray(answer) && answer.length === 0))) break;
     }
-
     return path;
   }, [form, answers]);
 
@@ -135,17 +106,13 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
 
   const handleSubmit = useCallback(async () => {
     if (!form) return;
-    
-    // Validation ONLY for questions on the current visible path
     for (const q of visibleQuestions) {
       if (q.required && (!answers[q.id] || (Array.isArray(answers[q.id]) && answers[q.id].length === 0))) {
-        const el = document.getElementById(`q-${q.id}`);
-        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         alert(`Required: ${q.title}`);
         return;
       }
     }
-
     setIsSubmitting(true);
     try {
       const s = await onSubmit(answers);
@@ -153,7 +120,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
       setSubmitted(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e) {
-      alert("Submission failed. Please check your connection.");
+      alert("Submission failed.");
     } finally {
       setIsSubmitting(false);
     }
@@ -164,7 +131,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
   if (submitted) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-[#f3f2f1]">
-        <div className="max-w-md w-full bg-white p-12 rounded shadow-2xl text-center border-t-[14px]" style={{ borderTopColor: form.theme?.primaryColor || '#008272' }}>
+        <div className="max-w-md w-full bg-white p-12 rounded shadow-2xl text-center border-l-[14px]" style={{ borderLeftColor: form.theme?.primaryColor || '#008272' }}>
           <div className="w-20 h-20 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto mb-8 text-4xl">✓</div>
           <h2 className="text-4xl font-black mb-2 tracking-tight">Success!</h2>
           <p className="text-gray-500 font-bold mb-10">Your response has been recorded.</p>
@@ -197,36 +164,56 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
 
       <div className="flex-grow flex flex-col items-center py-10 px-4">
         <div className="max-w-3xl w-full space-y-6">
-          {/* Main Title Block */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white/95 backdrop-blur-md rounded shadow-xl border-t-[14px] p-10 md:p-14 text-center" style={{ borderTopColor: theme.primaryColor }}>
-            {theme.logoUrl && (
-              <div className={`mb-10 flex ${theme.logoAlignment === 'center' ? 'justify-center' : (theme.logoAlignment === 'right' ? 'justify-end' : 'justify-start')}`}>
-                <img src={theme.logoUrl} style={{ width: `${(theme.logoScale || 100) * 0.7}px` }} className="h-auto object-contain" alt="Logo" />
+          {/* ENLARGED HEADER BLOCK */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white/95 backdrop-blur-md rounded shadow-xl border-l-[16px] p-12 md:p-16 relative overflow-hidden" style={{ borderLeftColor: theme.primaryColor }}>
+            <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+              {theme.headerBackgroundVideoUrl && (
+                <video key={theme.headerBackgroundVideoUrl} src={theme.headerBackgroundVideoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover opacity-10" />
+              )}
+              {theme.headerBackgroundImage && (
+                <img src={theme.headerBackgroundImage} className="w-full h-full object-cover opacity-10" />
+              )}
+            </div>
+            
+            <div className="relative z-10">
+              {theme.logoUrl && (
+                <div className={`mb-12 flex ${theme.logoAlignment === 'center' ? 'justify-center' : (theme.logoAlignment === 'right' ? 'justify-end' : 'justify-start')}`}>
+                  <img src={theme.logoUrl} style={{ width: `${(theme.logoScale || 100) * 0.7}px` }} className="h-auto object-contain" alt="Logo" />
+                </div>
+              )}
+              <h1 className="text-4xl md:text-5xl font-black text-[#323130] mb-10 tracking-tighter leading-tight" style={{ 
+                fontSize: `${form.titleFormatting?.fontSize || 40}px`,
+                textAlign: form.titleFormatting?.textAlign || 'left',
+                fontWeight: form.titleFormatting?.bold ? '900' : '700',
+                fontStyle: form.titleFormatting?.italic ? 'italic' : 'normal'
+              }}>{form.title}</h1>
+              <div className="space-y-6">
+                {(form.descriptions ?? []).map(d => (
+                  <p key={d.id} className={`text-gray-500 font-medium leading-relaxed ${d.formatting?.italic ? 'italic' : ''}`} style={{ 
+                    textAlign: d.formatting?.textAlign || 'left', 
+                    fontSize: `${d.formatting?.fontSize || 16}px`,
+                    fontWeight: d.formatting?.bold ? 'bold' : 'normal'
+                  }}>{d.text}</p>
+                ))}
               </div>
-            )}
-            <h1 className="text-4xl md:text-5xl font-black text-[#323130] mb-8 tracking-tighter leading-tight">{form.title}</h1>
-            <div className="space-y-4">
-              {(form.descriptions ?? []).map(d => (
-                <p key={d.id} className={`text-gray-500 font-medium leading-relaxed ${d.formatting?.italic ? 'italic' : ''}`} style={{ textAlign: d.formatting?.textAlign || 'center', fontSize: d.formatting?.fontSize === 'large' ? '1.2rem' : '1rem' }}>{d.text}</p>
-              ))}
             </div>
           </motion.div>
 
-          {/* Dynamic Questions rendering based on branching path */}
           <AnimatePresence mode="popLayout">
             {visibleQuestions.map((q, idx) => (
               <motion.div 
-                key={q.id} 
-                id={`q-${q.id}`} 
-                initial={{ opacity: 0, x: -10 }} 
-                animate={{ opacity: 1, x: 0 }} 
-                exit={{ opacity: 0, scale: 0.95 }}
+                key={q.id} id={`q-${q.id}`} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, scale: 0.95 }}
                 className="bg-white/95 backdrop-blur-md p-10 md:p-14 rounded shadow-lg border-l-[12px]" 
                 style={{ borderLeftColor: theme.primaryColor }}
               >
                 <div className="mb-8">
                   <span className="text-[10px] font-black uppercase text-gray-400 tracking-[0.3em] mb-3 block">Question {idx + 1}</span>
-                  <h3 className="text-2xl md:text-3xl font-black text-[#323130] leading-tight">
+                  <h3 className="text-2xl md:text-3xl font-black text-[#323130] leading-tight" style={{
+                    fontSize: `${q.titleFormatting?.fontSize || 24}px`,
+                    textAlign: q.titleFormatting?.textAlign || 'left',
+                    fontStyle: q.titleFormatting?.italic ? 'italic' : 'normal',
+                    fontWeight: q.titleFormatting?.bold ? '900' : '700'
+                  }}>
                     {q.title} {q.required && <span className="text-red-500 ml-1">*</span>}
                   </h3>
                   {q.subtitle && <p className="text-gray-400 italic text-sm mt-3">{q.subtitle}</p>}
@@ -234,149 +221,37 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
                 
                 <div className="space-y-6">
                   {q.type === QuestionType.IMAGE_UPLOAD && <ImageUploadQuestion q={q} value={answers?.[q.id]} onAnswer={val => handleAnswer(q.id, val)} />}
-                  
-                  {q.type === QuestionType.SECTION && (
-                    <div className="p-8 bg-gray-50 rounded border-2 border-dashed border-gray-100 text-center">
-                       <p className="text-gray-500 font-black uppercase tracking-widest text-[#008272]">--- {q.title} ---</p>
-                    </div>
-                  )}
-
                   {q.type === QuestionType.CHOICE && (
                     <div className="space-y-3">
                       {q.options?.map(o => {
-                        const isChecked = q.multipleSelection 
-                          ? (Array.isArray(answers?.[q.id]) ? answers[q.id].includes(o.text) : false) 
-                          : (answers?.[q.id] === o.text);
-                        
+                        const isChecked = q.multipleSelection ? (Array.isArray(answers?.[q.id]) ? answers[q.id].includes(o.text) : false) : (answers?.[q.id] === o.text);
                         return (
                           <label key={o.id} className={`flex items-center gap-4 p-5 border-2 rounded cursor-pointer transition-all active:scale-[0.99] group ${isChecked ? 'border-[#008272] bg-teal-50/20' : 'border-gray-100 hover:border-gray-300'}`}>
-                            <input 
-                              type={q.multipleSelection ? 'checkbox' : 'radio'} 
-                              name={q.id} 
-                              className="w-5 h-5 cursor-pointer" 
-                              style={{ accentColor: theme.primaryColor }} 
-                              onChange={() => {
-                                if (q.multipleSelection) {
-                                  const current = Array.isArray(answers?.[q.id]) ? answers[q.id] : [];
-                                  if (current.includes(o.text)) {
-                                    handleAnswer(q.id, current.filter((v: string) => v !== o.text));
-                                  } else {
-                                    handleAnswer(q.id, [...current, o.text]);
-                                  }
-                                } else {
-                                  handleAnswer(q.id, o.text);
-                                }
-                              }} 
-                              checked={isChecked}
-                            />
-                            <span className={`font-black text-sm uppercase tracking-wider group-hover:text-[#008272] ${isChecked ? 'text-[#008272]' : 'text-[#323130]'}`}>{o.text}</span>
+                            <input type={q.multipleSelection ? 'checkbox' : 'radio'} className="w-5 h-5" style={{ accentColor: theme.primaryColor }} onChange={() => {
+                              if (q.multipleSelection) {
+                                const current = Array.isArray(answers?.[q.id]) ? answers[q.id] : [];
+                                handleAnswer(q.id, current.includes(o.text) ? current.filter((v: string) => v !== o.text) : [...current, o.text]);
+                              } else handleAnswer(q.id, o.text);
+                            }} checked={isChecked} />
+                            <span className={`font-black text-sm uppercase tracking-wider ${isChecked ? 'text-[#008272]' : 'text-[#323130]'}`}>{o.text}</span>
                           </label>
                         );
                       })}
                     </div>
                   )}
-
-                  {q.type === QuestionType.RANKING && (
-                    <div className="space-y-3">
-                      {(answers?.[q.id] || []).length > 0 && (
-                        <div className="mb-4 p-4 bg-teal-50/50 rounded border border-dashed border-[#008272]/30 flex flex-wrap gap-2 items-center">
-                          {(answers[q.id] || []).map((rankItem: string, i: number) => (
-                            <span key={i} className="px-3 py-1.5 bg-[#008272] text-white text-[10px] font-black rounded-full shadow-md">
-                              {i + 1}. {rankItem}
-                            </span>
-                          ))}
-                          <button onClick={() => handleAnswer(q.id, [])} className="text-[9px] font-black text-red-500 ml-auto uppercase tracking-widest hover:underline">Clear</button>
-                        </div>
-                      )}
-                      {q.options?.filter(o => !(Array.isArray(answers?.[q.id]) ? answers[q.id] : []).includes(o.text)).map(o => (
-                        <button key={o.id} onClick={() => {
-                          const current = Array.isArray(answers?.[q.id]) ? answers[q.id] : [];
-                          handleAnswer(q.id, [...current, o.text]);
-                        }} className="w-full flex items-center gap-4 p-5 border-2 border-gray-100 rounded hover:border-[#008272] hover:bg-teal-50/20 cursor-pointer transition-all text-left group">
-                          <div className="w-8 h-8 rounded-full border-2 border-gray-200 flex items-center justify-center text-xs font-black text-gray-300 group-hover:border-[#008272] group-hover:text-[#008272]">?</div>
-                          <span className="font-black text-sm text-[#323130] uppercase tracking-wider">{o.text}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
                   {q.type === QuestionType.TEXT && (
-                    <textarea 
-                      className="w-full border-2 border-gray-100 p-5 rounded bg-gray-50 focus:bg-white focus:border-[#008272] transition-all outline-none font-bold text-base min-h-[120px]" 
-                      placeholder="Type your response..." 
-                      value={answers?.[q.id] || ''}
-                      onChange={e => handleAnswer(q.id, e.target.value)} 
-                    />
+                    <textarea className="w-full border-2 border-gray-100 p-5 rounded bg-gray-50 focus:bg-white focus:border-[#008272] transition-all outline-none font-bold text-base min-h-[120px]" placeholder="Type your response..." value={answers?.[q.id] || ''} onChange={e => handleAnswer(q.id, e.target.value)} />
                   )}
-
                   {q.type === QuestionType.DATE && (
-                    <input 
-                      type="date" 
-                      className="w-full border-2 border-gray-100 p-5 rounded bg-gray-50 font-black outline-none focus:border-[#008272] text-lg" 
-                      value={answers?.[q.id] || ''}
-                      onChange={e => handleAnswer(q.id, e.target.value)} 
-                    />
-                  )}
-
-                  {q.type === QuestionType.DOUBLE_RANKING_BOX && (
-                    <div className="overflow-x-auto border rounded bg-white shadow-inner">
-                      <table className="w-full border-collapse">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="text-left text-[10px] font-black uppercase text-gray-400 p-4 border-b">Item</th>
-                            <th className="text-center text-[10px] font-black uppercase text-gray-400 p-4 border-b">{q.columnName || 'Details'}</th>
-                            <th className="text-center text-[10px] font-black uppercase text-gray-400 p-4 border-b">{q.columnNameSmall || 'Qty'}</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          {q.options?.map(o => {
-                            const currentAnswers = answers?.[q.id] || {};
-                            const rowValue = currentAnswers[o.id] || {};
-                            return (
-                              <tr key={o.id} className="hover:bg-gray-50/50">
-                                <td className="p-4 font-black text-sm text-[#323130]">{o.text}</td>
-                                <td className="p-2">
-                                  <input
-                                    type="text"
-                                    placeholder="..."
-                                    value={rowValue[`${q.columnName || 'detail'}_big`] || ''}
-                                    className="w-full p-3 bg-white border rounded text-xs font-medium focus:border-[#008272] outline-none"
-                                    onChange={e => {
-                                      handleAnswer(q.id, { ...currentAnswers, [o.id]: { ...rowValue, [`${q.columnName || 'detail'}_big`]: e.target.value } });
-                                    }}
-                                  />
-                                </td>
-                                <td className="p-2">
-                                  <input
-                                    type="text"
-                                    placeholder="0"
-                                    value={rowValue[`${q.columnNameSmall || 'value'}_small`] || ''}
-                                    className="w-16 mx-auto p-3 bg-white border rounded text-xs text-center font-black focus:border-[#008272] outline-none"
-                                    onChange={e => {
-                                      handleAnswer(q.id, { ...currentAnswers, [o.id]: { ...rowValue, [`${q.columnNameSmall || 'value'}_small`]: e.target.value } });
-                                    }}
-                                  />
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
+                    <input type="date" className="w-full border-2 border-gray-100 p-5 rounded bg-gray-50 font-black outline-none focus:border-[#008272] text-lg" value={answers?.[q.id] || ''} onChange={e => handleAnswer(q.id, e.target.value)} />
                   )}
                 </div>
               </motion.div>
             ))}
           </AnimatePresence>
 
-          {/* Submit button logic based on path completion */}
           <div className="flex justify-center pt-8 mb-20">
-             <button 
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="px-16 py-5 text-white font-black uppercase tracking-[0.3em] rounded shadow-2xl hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 text-base"
-              style={{ backgroundColor: theme.primaryColor }}
-             >
+             <button onClick={handleSubmit} disabled={isSubmitting} className="px-16 py-5 text-white font-black uppercase tracking-[0.3em] rounded shadow-2xl hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 text-base" style={{ backgroundColor: theme.primaryColor }}>
                {isSubmitting ? 'Submitting...' : 'Submit Response'}
              </button>
           </div>

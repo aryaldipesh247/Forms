@@ -27,15 +27,32 @@ const ShareDialog: React.FC<ShareDialogProps> = ({ formId, isPublished, onClose 
     });
   };
 
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'FORMS PRO Survey',
+          text: 'Please take a moment to fill out this survey.',
+          url: shareUrl,
+        });
+      } catch (err) {
+        console.error('Sharing failed', err);
+      }
+    } else {
+      handleCopy();
+    }
+  };
+
+  const handleEmail = () => {
+    const subject = encodeURIComponent('FORMS PRO Survey Invitation');
+    const body = encodeURIComponent(`Hello,\n\nYou are invited to fill out a survey. Please click the link below to participate:\n\n${shareUrl}\n\nThank you!`);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Backdrop for the modal to dismiss on click outside */}
-      <div 
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm" 
-        onClick={onClose} 
-      />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       
-      {/* Modal content area with professional styling matching FORMS PRO brand */}
       <div className="relative bg-white w-full max-w-md rounded-xl shadow-2xl border overflow-hidden animate-in fade-in zoom-in duration-200">
         <div className="bg-[#008272] p-6 text-white">
           <div className="flex justify-between items-center mb-1">
@@ -46,7 +63,6 @@ const ShareDialog: React.FC<ShareDialogProps> = ({ formId, isPublished, onClose 
         </div>
 
         <div className="p-8 space-y-6">
-          {/* Informative alert if the form is currently in draft mode */}
           {!isPublished && (
             <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg flex gap-3">
               <span className="text-xl">⚠️</span>
@@ -79,17 +95,23 @@ const ShareDialog: React.FC<ShareDialogProps> = ({ formId, isPublished, onClose 
 
               <div className="pt-4 border-t flex justify-center gap-6">
                 <button onClick={() => setShowQR(true)} className="text-center group cursor-pointer outline-none">
-                  <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-2 mx-auto border group-hover:bg-gray-100 transition-colors">
+                  <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-2 mx-auto border group-hover:bg-[#008272] group-hover:text-white transition-all">
                     <span className="text-xl">📱</span>
                   </div>
-                  <p className="text-[8px] font-black text-gray-400 uppercase">Show QR Code</p>
+                  <p className="text-[8px] font-black text-gray-400 uppercase group-hover:text-[#008272]">QR Code</p>
                 </button>
-                <div className="text-center group opacity-40">
-                  <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-2 mx-auto border">
+                <button onClick={handleEmail} className="text-center group cursor-pointer outline-none">
+                  <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-2 mx-auto border group-hover:bg-[#008272] group-hover:text-white transition-all">
                     <span className="text-xl">📧</span>
                   </div>
-                  <p className="text-[8px] font-black text-gray-400 uppercase">Email</p>
-                </div>
+                  <p className="text-[8px] font-black text-gray-400 uppercase group-hover:text-[#008272]">Email</p>
+                </button>
+                <button onClick={handleShare} className="text-center group cursor-pointer outline-none">
+                  <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-2 mx-auto border group-hover:bg-[#008272] group-hover:text-white transition-all">
+                    <span className="text-xl">🔗</span>
+                  </div>
+                  <p className="text-[8px] font-black text-gray-400 uppercase group-hover:text-[#008272]">Share</p>
+                </button>
               </div>
             </div>
           ) : (

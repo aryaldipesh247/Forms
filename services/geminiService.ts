@@ -59,17 +59,18 @@ export const suggestThemeFromAI = async (title: string, description: string): Pr
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `Based on this form title: "${title}" and description: "${description}", suggest a professional color palette.
-               Return a JSON object with primaryColor (hex) and a short keyword for a background image (e.g., "minimalist", "coffee", "corporate").`,
+    contents: `Based on this form title: "${title}" and content, suggest a professional color palette and theme metadata.
+               Return a JSON object with primaryColor (hex), backgroundColor (hex), and a visualPrompt for a background image.`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
         properties: {
           primaryColor: { type: Type.STRING },
-          bgKeyword: { type: Type.STRING }
+          backgroundColor: { type: Type.STRING },
+          visualPrompt: { type: Type.STRING }
         },
-        required: ["primaryColor", "bgKeyword"]
+        required: ["primaryColor", "backgroundColor", "visualPrompt"]
       }
     }
   });
@@ -79,8 +80,8 @@ export const suggestThemeFromAI = async (title: string, description: string): Pr
     const res = JSON.parse(text.trim());
     return {
       primaryColor: res.primaryColor || '#008272',
-      backgroundColor: '#f3f2f1',
-      backgroundImage: `https://images.unsplash.com/photo-1497215728101-856f4ea42174?q=80&w=2000&auto=format&fit=crop` 
+      backgroundColor: res.backgroundColor || '#f3f2f1',
+      themePreset: res.visualPrompt
     };
   } catch (e) {
     return { primaryColor: '#008272' };
@@ -93,7 +94,7 @@ export const generateBackgroundImageAI = async (prompt: string): Promise<string 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: {
-        parts: [{ text: `Create a professional, high-quality, abstract or minimalist background suitable for a professional survey form. Theme: ${prompt}.` }]
+        parts: [{ text: `High-resolution, professional, 4k, minimalist background for a survey form. Deeply aesthetic, clean, and modern. Subject: ${prompt}` }]
       },
       config: {
         imageConfig: {
