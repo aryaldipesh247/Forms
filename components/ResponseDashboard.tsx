@@ -58,7 +58,6 @@ const ResponseDashboard: React.FC<ResponseDashboardProps> = ({ form, onBack, onU
       if (Array.isArray(ans)) return ans.join('; ');
       
       if (q.type === QuestionType.DOUBLE_RANKING_BOX) {
-        // Format of ans: { [optId]: { big: "...", small: "..." } }
         return Object.entries(ans)
           .map(([optId, values]: [string, any]) => {
             const opt = q.options?.find(o => o.id === optId);
@@ -71,10 +70,8 @@ const ResponseDashboard: React.FC<ResponseDashboardProps> = ({ form, onBack, onU
           .filter(Boolean)
           .join(' | ');
       }
-      
       return JSON.stringify(ans);
     }
-    
     return ans.toString();
   };
 
@@ -202,11 +199,10 @@ const ResponseDashboard: React.FC<ResponseDashboardProps> = ({ form, onBack, onU
       <main className="flex-1 max-w-6xl mx-auto w-full py-8 px-6">
         <AnimatePresence mode="wait">
           {activeTab === 'analytics' ? (
-            <motion.div key="analytics" className="space-y-8 pb-20">
+            <motion.div key="analytics" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-8 pb-20">
               <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-white p-8 rounded shadow-sm border-t-4 border-[#008272]"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Database Entries</p><h2 className="text-5xl font-black text-[#323130]">{responses.length}</h2></div>
                 
-                {/* REGISTRY CONSOLE - MATCHING USER SCREENSHOT */}
                 {isOfficial ? (
                   <div className="bg-white p-8 rounded shadow-sm border-t-4 border-[#ea4300]">
                     <p className="text-[14px] font-bold text-gray-400 uppercase tracking-[0.3em] mb-6">REGISTRY CONSOLE</p>
@@ -234,7 +230,7 @@ const ResponseDashboard: React.FC<ResponseDashboardProps> = ({ form, onBack, onU
                 ) : (
                   <div className="bg-white p-8 rounded shadow-sm border-t-4 border-[#008272]">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Excel Tools</p>
-                    <p className="text-[10px] font-bold text-gray-500 mt-2">Export your data to specialized master sheets for offline processing.</p>
+                    <p className="text-[10px] font-bold text-gray-500 mt-2">Export your data to specialized master sheets.</p>
                     <button onClick={() => downloadCSV()} className="mt-4 w-full bg-[#107c41] text-white py-2 rounded text-[10px] font-black uppercase tracking-widest shadow hover:brightness-110">Generate Master CSV</button>
                   </div>
                 )}
@@ -248,8 +244,31 @@ const ResponseDashboard: React.FC<ResponseDashboardProps> = ({ form, onBack, onU
                   return (
                     <div key={q.id} className="bg-white p-8 rounded shadow-sm border border-gray-100 h-[450px] flex flex-col group hover:shadow-md transition-shadow">
                       <div className="mb-6"><span className="text-[9px] font-black text-[#008272] uppercase tracking-widest block mb-1">Question {idx + 1}</span><h4 className="text-sm font-bold text-[#323130] line-clamp-2">{q.title}</h4></div>
-                      <div className="flex-1 relative">{stats ? <ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={stats} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">{stats.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Pie><Tooltip /><Legend verticalAlign="bottom" height={36}/></PieChart></ResponsiveContainer> : <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 rounded-lg p-6"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Registry Feed</p><div className="w-full space-y-2 overflow-y-auto max-h-[220px]">{responses.slice(-5).map(r => { const ans = r.answers?.[q.id]; return <div key={r.id} className="bg-white p-3 rounded border text-[11px] text-[#323130] text-left shadow-sm">{formatCellValue(ans, q) || <em className="text-gray-300">No Entry</em>}</div>; })}</div></div>}</div>
-                    );
+                      <div className="flex-1 relative">
+                        {stats ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie data={stats} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                                {stats.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                              </Pie>
+                              <Tooltip />
+                              <Legend verticalAlign="bottom" height={36}/>
+                            </PieChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 rounded-lg p-6">
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Registry Feed</p>
+                            <div className="w-full space-y-2 overflow-y-auto max-h-[220px]">
+                              {responses.slice(-5).map(r => { 
+                                const ans = r.answers?.[q.id]; 
+                                return <div key={r.id} className="bg-white p-3 rounded border text-[11px] text-[#323130] text-left shadow-sm">{formatCellValue(ans, q) || <em className="text-gray-300">No Entry</em>}</div>; 
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
                 })}
               </div>
             </motion.div>
@@ -260,7 +279,7 @@ const ResponseDashboard: React.FC<ResponseDashboardProps> = ({ form, onBack, onU
                   categoryLabel={
                     activeTab === 'data_all' ? 'Official' : 
                     activeTab === 'data_alcohol' ? 'Alcohol' : 
-                    activeTab === 'data_valuable' ? 'Valuable' : 
+                    activeTab === 'data_valuable' ? 'Valuables' : 
                     activeTab === 'data_nonvaluable' ? 'General' : 'Registry'
                   } 
                />
