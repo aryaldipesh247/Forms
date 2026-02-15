@@ -55,7 +55,12 @@ const ResponseDashboard: React.FC<ResponseDashboardProps> = ({ form, onBack, onU
     if (ans === null || ans === undefined) return '';
     
     if (typeof ans === 'object') {
-      if (Array.isArray(ans)) return ans.join('; ');
+      if (Array.isArray(ans)) {
+        if (q.type === QuestionType.DYNAMIC_LIST) {
+          return ans.map((item: any) => `${item.col1 || '?'}: ${item.col2 || '?'}`).join(' | ');
+        }
+        return ans.join('; ');
+      }
       
       if (q.type === QuestionType.DOUBLE_RANKING_BOX) {
         return Object.entries(ans)

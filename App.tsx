@@ -14,6 +14,12 @@ import { saveDatabase, loadDatabase, deleteUserCompletely, getFormById, saveResp
 const SESSION_KEY = 'forms_pro_active_session_v1';
 const LOST_FOUND_ID = 'official-lost-found-v1';
 
+const GlobalFooter = () => (
+  <footer className="fixed bottom-2 right-4 z-[9999] pointer-events-none select-none text-right">
+    <div className="text-[7px] md:text-[8px] font-bold text-gray-400/70 uppercase tracking-tight">AjD Group of Company | Designed By Dipesh Jung<br/>Contact:aryaldipesh248@gmail.com</div>
+  </footer>
+);
+
 const LOST_AND_FOUND_TEMPLATE: Form = {
   id: LOST_FOUND_ID,
   title: 'Lost & Found Official Registry',
@@ -85,10 +91,12 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
 
+  // Synchronization effect: Only initialize the official registry if it is completely missing.
+  // This allows users to add/edit questions without them being overwritten by the template.
   useEffect(() => {
     if (currentUser) {
       const existingForm = currentUser.forms.find(f => f.id === LOST_FOUND_ID);
-      if (!existingForm || existingForm.questions.length !== LOST_AND_FOUND_TEMPLATE.questions.length) {
+      if (!existingForm) {
         const otherForms = currentUser.forms.filter(f => f.id !== LOST_FOUND_ID);
         const updatedForms = [LOST_AND_FOUND_TEMPLATE, ...otherForms];
         const updatedUser = { ...currentUser, forms: updatedForms };
@@ -97,7 +105,7 @@ const App: React.FC = () => {
         saveForm(currentUser.id, LOST_AND_FOUND_TEMPLATE);
       }
     }
-  }, [currentUser]);
+  }, [currentUser?.id]); // Only re-run if the active user ID changes
 
   useEffect(() => {
     if (!isLoading && users.length > 0) localStorage.setItem('forms_pro_local_backup', JSON.stringify(users));
@@ -165,12 +173,6 @@ const App: React.FC = () => {
   const handlePermanentDelete = useCallback(async (id: string) => { if (!currentUser) return; if (id === LOST_FOUND_ID) return alert("Official registry forms cannot be permanently deleted."); setIsSyncing(true); try { await deleteFormPermanently(id); const updatedForms = currentUser.forms.filter(f => f.id !== id); const updatedUser = { ...currentUser, forms: updatedForms }; setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u)); setCurrentUser(updatedUser); } finally { setIsSyncing(false); } }, [currentUser]);
   const handleDeleteUser = useCallback(async (userId: string) => { if (!currentUser) return; await deleteUserCompletely(userId, currentUser.forms); setUsers(prev => prev.filter(u => u.id !== userId)); setCurrentUser(null); localStorage.removeItem(SESSION_KEY); setCurrentView('dashboard'); window.location.hash = ''; }, [currentUser]);
 
-  const GlobalFooter = () => (
-    <footer className="fixed bottom-2 right-4 z-[9999] pointer-events-none select-none text-right">
-      <div className="text-[7px] md:text-[8px] font-bold text-gray-400/70 uppercase tracking-tight">AjD Group of Company | Designed By Dipesh Jung<br/>Contact:aryaldipesh248@gmail.com</div>
-    </footer>
-  );
-
   if (isLoading) return (
     <div className="min-h-screen bg-[#f3f2f1] flex items-center justify-center">
       <div className="flex flex-col items-center gap-4"><div className="w-12 h-12 border-4 border-[#008272] border-t-transparent rounded-full animate-spin"></div><p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#008272]">FORMS PRO Syncing...</p></div>
@@ -198,20 +200,38 @@ const App: React.FC = () => {
             form={activeForm} isGuest={!currentUser} onBack={() => { if (currentUser) { setCurrentView('editor'); window.location.hash = ''; } else { window.location.hash = ''; setCurrentView('dashboard'); } }} 
             onSubmit={async (answers) => {
               const fid = activeFormId || activeForm?.id; if (!fid) return 0;
-              const shared = { 'q-found-date': answers['q-found-date'], 'q-location': answers['q-location'], 'q-department': answers['q-department'], 'q-found-time': answers['q-found-time'], 'q-item-desc': answers['q-item-desc'], 'q-item-pic': answers['q-item-pic'], 'q-contact': answers['q-contact'], 'q-remarks': answers['q-remarks'] };
               let lastSN = (activeForm?.responses?.length || 0);
               
               if (fid === LOST_FOUND_ID) {
+                // For Lost & Found, we split multi-category reports into individual entries.
+                // We must also ensure any newly added custom questions are included in the 'shared' data.
                 const categories = Array.isArray(answers['q-category']) ? answers['q-category'] : [answers['q-category']];
+                
+                // Collect all answers that aren't specific to the multi-entry logic
+                const baseAnswers = { ...answers };
+                delete baseAnswers['q-category'];
+                delete baseAnswers['q-alcohol-details'];
+                delete baseAnswers['q-valuable-details'];
+                delete baseAnswers['q-non-valuable-details'];
+
                 const submissions = categories.map(cat => {
                   let catKey: any = 'GENERAL';
                   const specific: any = {};
                   if (cat === 'ALCOHOL') { catKey = 'ALCOHOL'; specific['q-alcohol-details'] = answers['q-alcohol-details']; }
                   else if (cat === 'VALUABLE') { catKey = 'VALUABLE'; specific['q-valuable-details'] = answers['q-valuable-details']; }
                   else if (cat === 'NON VALUABLE') { catKey = 'NON_VALUABLE'; specific['q-non-valuable-details'] = answers['q-non-valuable-details']; }
+                  
                   lastSN++;
-                  return { id: Math.random().toString(36).substr(2, 9), formId: fid, timestamp: new Date().toISOString(), answers: { ...shared, ...specific, 'q-category': [cat] }, serialNumber: lastSN, category: catKey };
+                  return { 
+                    id: Math.random().toString(36).substr(2, 9), 
+                    formId: fid, 
+                    timestamp: new Date().toISOString(), 
+                    answers: { ...baseAnswers, ...specific, 'q-category': [cat] }, 
+                    serialNumber: lastSN, 
+                    category: catKey 
+                  };
                 });
+                
                 for (const sub of submissions) await saveResponse(fid, sub);
                 return lastSN;
               } else {

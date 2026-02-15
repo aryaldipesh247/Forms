@@ -57,6 +57,83 @@ const ImageUploadQuestion = ({ q, value, onAnswer }: { q: Question, value: any, 
   );
 };
 
+const DynamicListQuestion = ({ q, value, onAnswer, themeColor }: { q: Question, value: any, onAnswer: (v: any) => void, themeColor: string }) => {
+  const entries = useMemo(() => Array.isArray(value) ? value : [{ id: 'init-1', col1: '', col2: '' }], [value]);
+
+  const updateEntry = (id: string, updates: any) => {
+    const updated = entries.map(e => e.id === id ? { ...e, ...updates } : e);
+    onAnswer(updated);
+  };
+
+  const addEntry = () => {
+    onAnswer([...entries, { id: Math.random().toString(36).substr(2, 9), col1: '', col2: '' }]);
+  };
+
+  const removeEntry = (id: string) => {
+    if (entries.length <= 1) {
+      onAnswer([{ id: Math.random().toString(36).substr(2, 9), col1: '', col2: '' }]);
+    } else {
+      onAnswer(entries.filter(e => e.id !== id));
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="overflow-hidden border rounded-xl bg-gray-50/30">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-gray-100/50">
+              <th className="p-4 text-[10px] font-black uppercase text-gray-400 tracking-widest">{q.columnName || 'Item'}</th>
+              <th className="p-4 text-[10px] font-black uppercase text-gray-400 tracking-widest">{q.columnNameSmall || 'Detail'}</th>
+              <th className="w-12"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            <AnimatePresence initial={false}>
+              {entries.map((e, idx) => (
+                <motion.tr 
+                  key={e.id} 
+                  initial={{ opacity: 0, height: 0 }} 
+                  animate={{ opacity: 1, height: 'auto' }} 
+                  exit={{ opacity: 0, height: 0 }}
+                  className="bg-white group"
+                >
+                  <td className="p-2">
+                    <input 
+                      type="text" value={e.col1} 
+                      onChange={val => updateEntry(e.id, { col1: val.target.value })}
+                      placeholder="..."
+                      className="w-full p-3 bg-transparent border-none focus:ring-1 focus:ring-teal-100 rounded text-sm font-bold"
+                    />
+                  </td>
+                  <td className="p-2">
+                    <input 
+                      type="text" value={e.col2} 
+                      onChange={val => updateEntry(e.id, { col2: val.target.value })}
+                      placeholder="..."
+                      className="w-full p-3 bg-transparent border-none focus:ring-1 focus:ring-teal-100 rounded text-sm font-bold"
+                    />
+                  </td>
+                  <td className="p-2 text-center">
+                    <button onClick={() => removeEntry(e.id)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-2">✕</button>
+                  </td>
+                </motion.tr>
+              ))}
+            </AnimatePresence>
+          </tbody>
+        </table>
+      </div>
+      <button 
+        onClick={addEntry}
+        className="flex items-center gap-2 px-6 py-3 border-2 border-dashed border-gray-200 rounded-xl hover:border-[#008272] hover:bg-teal-50/10 transition-all group w-full justify-center"
+      >
+        <span className="text-lg text-gray-400 group-hover:text-[#008272]">+</span>
+        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-[#008272]">Add New Entry</span>
+      </button>
+    </div>
+  );
+};
+
 interface FormPreviewProps {
   form: Form | null;
   isGuest?: boolean;
@@ -165,7 +242,6 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
 
       <div className="flex-grow flex flex-col items-center py-10 px-4">
         <div className="max-w-3xl w-full space-y-6">
-          {/* ENLARGED HEADER BLOCK */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white/95 backdrop-blur-md rounded shadow-xl border-l-[16px] p-12 md:p-16 relative overflow-hidden" style={{ borderLeftColor: theme.primaryColor }}>
             <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
               {theme.headerBackgroundVideoUrl && (
@@ -223,6 +299,8 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
                 <div className="space-y-6">
                   {q.type === QuestionType.IMAGE_UPLOAD && <ImageUploadQuestion q={q} value={answers?.[q.id]} onAnswer={val => handleAnswer(q.id, val)} />}
                   
+                  {q.type === QuestionType.DYNAMIC_LIST && <DynamicListQuestion q={q} value={answers?.[q.id]} onAnswer={val => handleAnswer(q.id, val)} themeColor={theme.primaryColor} />}
+
                   {q.type === QuestionType.CHOICE && (
                     <div className="space-y-3">
                       {q.options?.map(o => {

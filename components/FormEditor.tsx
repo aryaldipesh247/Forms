@@ -6,6 +6,27 @@ import ShareDialog from './ShareDialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateQuestionsFromAI, suggestThemeFromAI } from '../services/geminiService';
 
+const FormattingToolbar = ({ format, onChange }: { format: TextFormat, onChange: (f: TextFormat) => void }) => (
+  <div className="absolute -top-12 left-0 flex items-center gap-1 bg-white border p-1 shadow-xl rounded z-[100] scale-90 origin-left">
+    <button onClick={() => onChange({ ...format, bold: !format.bold })} className={`p-2 rounded ${format.bold ? 'bg-[#008272] text-white' : 'hover:bg-gray-100'}`}><b>B</b></button>
+    <button onClick={() => onChange({ ...format, italic: !format.italic })} className={`p-2 rounded ${format.italic ? 'bg-[#008272] text-white' : 'hover:bg-gray-100'}`}><i>I</i></button>
+    <div className="w-px h-4 bg-gray-200 mx-1" />
+    <button onClick={() => onChange({ ...format, textAlign: 'left' })} className={`p-2 rounded ${format.textAlign === 'left' ? 'bg-[#008272] text-white' : 'hover:bg-gray-100'}`}>L</button>
+    <button onClick={() => onChange({ ...format, textAlign: 'center' })} className={`p-2 rounded ${format.textAlign === 'center' ? 'bg-[#008272] text-white' : 'hover:bg-gray-100'}`}>C</button>
+    <button onClick={() => onChange({ ...format, textAlign: 'right' })} className={`p-2 rounded ${format.textAlign === 'right' ? 'bg-[#008272] text-white' : 'hover:bg-gray-100'}`}>R</button>
+    <div className="w-px h-4 bg-gray-200 mx-1" />
+    <select 
+      value={format.fontSize || 'medium'} 
+      onChange={(e) => onChange({ ...format, fontSize: e.target.value as any })}
+      className="text-[10px] font-bold uppercase p-1 bg-transparent border-none outline-none"
+    >
+      <option value="small">Small</option>
+      <option value="medium">Medium</option>
+      <option value="large">Big</option>
+    </select>
+  </div>
+);
+
 interface FormEditorProps {
   form: Form;
   onUpdate: (form: Form) => void;
@@ -137,8 +158,10 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
     const newQuestion: Question = {
       id: Math.random().toString(36).substr(2, 9),
       type,
-      title: 'New Question',
+      title: type === QuestionType.DYNAMIC_LIST ? 'Add Dynamic Entries...' : 'New Question',
       required: false,
+      columnName: type === QuestionType.DYNAMIC_LIST ? 'Primary Column' : undefined,
+      columnNameSmall: type === QuestionType.DYNAMIC_LIST ? 'Secondary Column' : undefined,
       options: [QuestionType.CHOICE, QuestionType.RANKING, QuestionType.DOUBLE_RANKING_BOX].includes(type) ? [
         { id: Math.random().toString(36).substr(2, 9), text: 'Option 1' },
         { id: Math.random().toString(36).substr(2, 9), text: 'Option 2' }
@@ -146,27 +169,6 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
     };
     updateForm({ questions: [...form.questions, newQuestion] });
   };
-
-  const FormattingToolbar = ({ format, onChange }: { format: TextFormat, onChange: (f: TextFormat) => void }) => (
-    <div className="absolute -top-12 left-0 flex items-center gap-1 bg-white border p-1 shadow-xl rounded z-[100] scale-90 origin-left">
-      <button onClick={() => onChange({ ...format, bold: !format.bold })} className={`p-2 rounded ${format.bold ? 'bg-[#008272] text-white' : 'hover:bg-gray-100'}`}><b>B</b></button>
-      <button onClick={() => onChange({ ...format, italic: !format.italic })} className={`p-2 rounded ${format.italic ? 'bg-[#008272] text-white' : 'hover:bg-gray-100'}`}><i>I</i></button>
-      <div className="w-px h-4 bg-gray-200 mx-1" />
-      <button onClick={() => onChange({ ...format, textAlign: 'left' })} className={`p-2 rounded ${format.textAlign === 'left' ? 'bg-[#008272] text-white' : 'hover:bg-gray-100'}`}>L</button>
-      <button onClick={() => onChange({ ...format, textAlign: 'center' })} className={`p-2 rounded ${format.textAlign === 'center' ? 'bg-[#008272] text-white' : 'hover:bg-gray-100'}`}>C</button>
-      <button onClick={() => onChange({ ...format, textAlign: 'right' })} className={`p-2 rounded ${format.textAlign === 'right' ? 'bg-[#008272] text-white' : 'hover:bg-gray-100'}`}>R</button>
-      <div className="w-px h-4 bg-gray-200 mx-1" />
-      <select 
-        value={format.fontSize || 'medium'} 
-        onChange={(e) => onChange({ ...format, fontSize: e.target.value as any })}
-        className="text-[10px] font-bold uppercase p-1 bg-transparent border-none outline-none"
-      >
-        <option value="small">Small</option>
-        <option value="medium">Medium</option>
-        <option value="large">Big</option>
-      </select>
-    </div>
-  );
 
   return (
     <div className="flex flex-col min-h-screen relative overflow-x-hidden" style={{ 
@@ -465,13 +467,14 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
           </div>
 
           <div className="bg-white p-8 rounded-md border shadow-sm mb-20">
-             <div className="grid grid-cols-4 md:grid-cols-7 gap-3">
+             <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
                 {[
                   { type: QuestionType.CHOICE, label: 'Choice', icon: '🔘' },
                   { type: QuestionType.TEXT, label: 'Text', icon: '📝' },
                   { type: QuestionType.DATE, label: 'Date', icon: '📅' },
                   { type: QuestionType.RANKING, label: 'Ranking', icon: '🔢' },
                   { type: QuestionType.DOUBLE_RANKING_BOX, label: 'Double', icon: '⚖️' },
+                  { type: QuestionType.DYNAMIC_LIST, label: 'Respondent Table', icon: '➕' },
                   { type: QuestionType.IMAGE_UPLOAD, label: 'Image', icon: '📸' },
                   { type: QuestionType.SECTION, label: 'Section', icon: '📑' },
                 ].map(btn => (

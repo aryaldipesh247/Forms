@@ -81,7 +81,6 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
         branching: branching !== undefined ? branching : o.branching 
       } : o
     );
-    // Logic/Branching changes should be synced immediately to avoid redirection issues
     const isLogicUpdate = branching !== undefined;
     updateProp('options', newOptions, isLogicUpdate);
   };
@@ -163,6 +162,37 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                 </div>
               ))}
               <button onClick={addOption} className="text-[10px] font-black uppercase tracking-widest text-[#008272] mt-4">+ Add Row Item</button>
+           </div>
+        )}
+
+        {localQuestion.type === QuestionType.DYNAMIC_LIST && (
+           <div className="space-y-4 p-6 bg-gray-50/50 rounded-xl border border-dashed">
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">Respondent Table Configuration</p>
+              <div className="grid grid-cols-2 gap-6">
+                 <div className="space-y-2">
+                    <label className="text-[9px] font-black uppercase text-[#008272]">Primary Column Label</label>
+                    <input 
+                      type="text" value={localQuestion.columnName || ''} 
+                      onChange={e => updateProp('columnName', e.target.value)} 
+                      placeholder="e.g. Item Name"
+                      className="w-full p-2 bg-white border rounded text-xs font-bold"
+                    />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[9px] font-black uppercase text-[#008272]">Secondary Column Label</label>
+                    <input 
+                      type="text" value={localQuestion.columnNameSmall || ''} 
+                      onChange={e => updateProp('columnNameSmall', e.target.value)} 
+                      placeholder="e.g. Remarks / Qty"
+                      className="w-full p-2 bg-white border rounded text-xs font-bold"
+                    />
+                 </div>
+              </div>
+              <div className="mt-4 p-4 bg-teal-50 rounded border border-teal-100">
+                <p className="text-[10px] font-bold text-[#008272] leading-relaxed">
+                  Respondents will be able to add multiple rows to this table. The columns above define the headers they will see.
+                </p>
+              </div>
            </div>
         )}
 
