@@ -48,65 +48,91 @@ const ResponseDashboard: React.FC<ResponseDashboardProps> = ({ form, onBack, onU
     }
   };
 
-  /**
-   * Helper to format complex answer objects into readable strings for Excel
-   */
   const formatCellValue = (ans: any, q: Question): string => {
     if (ans === null || ans === undefined) return '';
-    
     if (typeof ans === 'object') {
       if (Array.isArray(ans)) {
-        if (q.type === QuestionType.DYNAMIC_LIST) {
-          return ans.map((item: any) => `${item.col1 || '?'}: ${item.col2 || '?'}`).join(' | ');
-        }
+        if (q.type === QuestionType.DYNAMIC_LIST) return ans.map((item: any) => `${item.col1 || '?'}: ${item.col2 || '?'}`).join(' | ');
         return ans.join('; ');
       }
-      
       if (q.type === QuestionType.DOUBLE_RANKING_BOX) {
-        return Object.entries(ans)
-          .map(([optId, values]: [string, any]) => {
-            const opt = q.options?.find(o => o.id === optId);
-            const label = opt ? opt.text : 'Unknown';
-            const big = values.big || '';
-            const small = values.small || '';
-            if (!big && !small) return null;
-            return `${label}: ${big} (${small})`;
-          })
-          .filter(Boolean)
-          .join(' | ');
+        return Object.entries(ans).map(([optId, values]: [string, any]) => {
+          const opt = q.options?.find(o => o.id === optId);
+          return `${opt ? opt.text : 'Item'}: ${values.big || ''} (${values.small || ''})`;
+        }).join(' | ');
       }
       return JSON.stringify(ans);
     }
     return ans.toString();
   };
 
-  const downloadCSV = (targetData?: FormResponse[], fileNameSuffix?: string) => {
-    const target = targetData || filteredResponses;
-    if (target.length === 0) return alert('No data to export for this selection.');
-    
-    const headers = ['Timestamp', 'Serial Number', 'Registry Category', ...questions.map(q => q.title)];
-    const rows = target.map(r => {
-      const row = [
-        new Date(r.timestamp).toLocaleString(), 
-        r.serialNumber, 
-        r.category || 'GENERAL'
-      ];
-      
-      questions.forEach(q => {
-        const ans = r.answers?.[q.id];
-        const cellValue = formatCellValue(ans, q).replace(/"/g, '""');
-        row.push(cellValue);
+  /**
+   * REFACTORED EXCEL DOWNLOAD
+   * Custom mapping for Alcohol, Valuable, and Non-Valuable categories
+   */
+  const downloadRegistryCSV = (category: 'ALCOHOL' | 'VALUABLE' | 'NON_VALUABLE') => {
+    const data = responses.filter(r => r.category === category);
+    if (data.length === 0) return alert(`No ${category} records to export.`);
+
+    let headers: string[] = [];
+    let rows: string[][] = [];
+
+    if (category === 'ALCOHOL') {
+      // 1 SERIAL NO, 2 DATE, 3 LOCATION, 4 TIME, 5 UNSEALED, 6 SEALED, 7 ITEM PICTURE, 8 ITEM DESCRIPTION, 9 FOUND BY, 10 REMARKS, 11 FOUND TIME
+      headers = ['SERIAL NO', 'DATE', 'LOCATION', 'TIME', 'UNSEALED', 'SEALED', 'ITEM PICTURE', 'ITEM DESCRIPTION', 'FOUND BY', 'REMARKS', 'FOUND TIME'];
+      rows = data.map(r => {
+        const ans = r.answers;
+        const alcTable = ans['q-alcohol-details'] || {};
+        
+        // Split alcohol table into unsealed and sealed columns
+        const unsealedEntry = alcTable['alc-unsealed'] ? `${alcTable['alc-unsealed'].big || ''} [${alcTable['alc-unsealed'].small || ''}]` : '';
+        const sealedEntries = Object.entries(alcTable)
+          .filter(([k]) => k !== 'alc-unsealed')
+          .map(([k, v]: any) => {
+            const opt = questions.find(q => q.id === 'q-alcohol-details')?.options?.find(o => o.id === k);
+            return `${opt?.text || 'Sealed'}: ${v.big || ''} [${v.small || ''}]`;
+          })
+          .filter(s => s.indexOf(':  []') === -1)
+          .join(' | ');
+
+        return [
+          r.serialNumber.toString(),
+          ans['q-found-date'] || '',
+          ans['q-location'] || '',
+          ans['q-found-time'] || '',
+          unsealedEntry,
+          sealedEntries,
+          ans['q-item-pic'] || '',
+          ans['q-item-desc'] || '',
+          ans['q-contact'] || '',
+          ans['q-remarks'] || '',
+          ans['q-found-time'] || ''
+        ];
       });
-      
-      return `"${row.join('","')}"`;
-    });
-    
-    const csvContent = `"${headers.join('","')}"\n${rows.join('\n')}`;
-    const blob = new Blob([["\ufeff", csvContent] as any], { type: 'text/csv;charset=utf-8;' });
+    } else {
+      // Valuable / Non-Valuable layout
+      // 1 SERIAL NO, 2 DATE, 3 LOCATION, 4 ITEM PICTURE, 5 ITEM DESCRIPTION, 6 FOUND BY, 7 REMARKS, 8 FOUND TIME
+      headers = ['SERIAL NO', 'DATE', 'LOCATION', 'ITEM PICTURE', 'ITEM DESCRIPTION', 'FOUND BY', 'REMARKS', 'FOUND TIME'];
+      rows = data.map(r => {
+        const ans = r.answers;
+        return [
+          r.serialNumber.toString(),
+          ans['q-found-date'] || '',
+          ans['q-location'] || '',
+          ans['q-item-pic'] || '',
+          ans['q-item-desc'] || '',
+          ans['q-contact'] || '',
+          ans['q-remarks'] || '',
+          ans['q-found-time'] || ''
+        ];
+      });
+    }
+
+    const csvContent = "\ufeff" + `"${headers.join('","')}"\n${rows.map(row => `"${row.map(cell => cell.toString().replace(/"/g, '""')).join('","')}"`).join('\n')}`;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    const suffix = fileNameSuffix || activeTab;
-    link.download = `${form.title.replace(/\s+/g, '_')}_${suffix}.csv`;
+    link.download = `${category}_MASTER_EXCEL_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
   };
 
@@ -129,16 +155,7 @@ const ResponseDashboard: React.FC<ResponseDashboardProps> = ({ form, onBack, onU
       <div className="p-6 border-b bg-gray-50/50 flex justify-between items-center">
         <div>
           <h3 className="text-xs font-black text-[#323130] uppercase tracking-widest">{categoryLabel} Master Data Sheet</h3>
-          <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Registry visibility for live audits and operational tracking.</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-[10px] font-black text-[#008272] uppercase tracking-widest">{data.length} Records</span>
-          <button 
-            onClick={() => downloadCSV(data, categoryLabel.toLowerCase().replace(/\s+/g, '_'))}
-            className="bg-[#107c41] text-white px-4 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest hover:bg-[#0b5d31] transition-all shadow-sm"
-          >
-            Download {categoryLabel} Excel
-          </button>
+          <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Registry visibility for live audits.</p>
         </div>
       </div>
       <div className="overflow-x-auto">
@@ -178,10 +195,6 @@ const ResponseDashboard: React.FC<ResponseDashboardProps> = ({ form, onBack, onU
           <button onClick={onBack} className="p-1.5 hover:bg-gray-100 rounded text-[#008272]">←</button>
           <h1 className="font-bold text-xs uppercase tracking-[0.2em] text-[#008272]">{form.title} | Console</h1>
         </div>
-        <div className="flex items-center gap-3">
-          <button onClick={() => downloadCSV()} className="bg-[#107c41] text-white px-4 py-1.5 rounded-sm text-[10px] font-black uppercase tracking-widest hover:bg-[#0b5d31] transition-all">Export Current View</button>
-          <button onClick={onArchiveResponses} className="text-[#a4262c] text-[10px] font-black uppercase tracking-widest hover:underline">Clear History</button>
-        </div>
       </nav>
 
       <div className="bg-white border-b px-6 sticky top-12 z-[55] shadow-sm">
@@ -206,37 +219,16 @@ const ResponseDashboard: React.FC<ResponseDashboardProps> = ({ form, onBack, onU
           {activeTab === 'analytics' ? (
             <motion.div key="analytics" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-8 pb-20">
               <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white p-8 rounded shadow-sm border-t-4 border-[#008272]"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Database Entries</p><h2 className="text-5xl font-black text-[#323130]">{responses.length}</h2></div>
+                <div className="bg-white p-8 rounded shadow-sm border-t-4 border-[#008272]"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Entries</p><h2 className="text-5xl font-black text-[#323130]">{responses.length}</h2></div>
                 
-                {isOfficial ? (
-                  <div className="bg-white p-8 rounded shadow-sm border-t-4 border-[#ea4300]">
-                    <p className="text-[14px] font-bold text-gray-400 uppercase tracking-[0.3em] mb-6">REGISTRY CONSOLE</p>
-                    <div className="flex flex-col gap-5">
-                      <button 
-                        onClick={() => downloadCSV(responses.filter(r => r.category === 'ALCOHOL'), 'alcohol_master')} 
-                        className="w-full text-left font-bold text-[11px] uppercase tracking-[0.15em] text-[#9b59b6] hover:brightness-75 transition-all"
-                      >
-                        DOWNLOAD ALCOHOL MASTER EXCEL
-                      </button>
-                      <button 
-                        onClick={() => downloadCSV(responses.filter(r => r.category === 'VALUABLE'), 'valuable_master')} 
-                        className="w-full text-left font-bold text-[11px] uppercase tracking-[0.15em] text-[#e67e22] hover:brightness-75 transition-all"
-                      >
-                        DOWNLOAD VALUABLE MASTER EXCEL
-                      </button>
-                      <button 
-                        onClick={() => downloadCSV(responses.filter(r => r.category === 'NON_VALUABLE'), 'non_valuable_master')} 
-                        className="w-full text-left font-bold text-[11px] uppercase tracking-[0.15em] text-[#3498db] hover:brightness-75 transition-all"
-                      >
-                        DOWNLOAD NON-VALUABLE MASTER EXCEL
-                      </button>
+                {isOfficial && (
+                  <div className="bg-white p-8 rounded shadow-sm border-t-4 border-[#ea4300] col-span-1 md:col-span-2">
+                    <p className="text-[12px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">EXCEL MASTER CONSOLE</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <button onClick={() => downloadRegistryCSV('ALCOHOL')} className="bg-purple-600 text-white px-4 py-3 rounded text-[9px] font-black uppercase tracking-widest shadow hover:bg-purple-700 transition-all">Download Alcohol Excel</button>
+                      <button onClick={() => downloadRegistryCSV('VALUABLE')} className="bg-amber-600 text-white px-4 py-3 rounded text-[9px] font-black uppercase tracking-widest shadow hover:bg-amber-700 transition-all">Download Valuable Excel</button>
+                      <button onClick={() => downloadRegistryCSV('NON_VALUABLE')} className="bg-blue-600 text-white px-4 py-3 rounded text-[9px] font-black uppercase tracking-widest shadow hover:bg-blue-700 transition-all">Download Non-Valuable Excel</button>
                     </div>
-                  </div>
-                ) : (
-                  <div className="bg-white p-8 rounded shadow-sm border-t-4 border-[#008272]">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Excel Tools</p>
-                    <p className="text-[10px] font-bold text-gray-500 mt-2">Export your data to specialized master sheets.</p>
-                    <button onClick={() => downloadCSV()} className="mt-4 w-full bg-[#107c41] text-white py-2 rounded text-[10px] font-black uppercase tracking-widest shadow hover:brightness-110">Generate Master CSV</button>
                   </div>
                 )}
 
@@ -282,7 +274,7 @@ const ResponseDashboard: React.FC<ResponseDashboardProps> = ({ form, onBack, onU
                <DataSheet 
                   data={filteredResponses} 
                   categoryLabel={
-                    activeTab === 'data_all' ? 'Official' : 
+                    activeTab === 'data_all' ? 'Master' : 
                     activeTab === 'data_alcohol' ? 'Alcohol' : 
                     activeTab === 'data_valuable' ? 'Valuables' : 
                     activeTab === 'data_nonvaluable' ? 'General' : 'Registry'

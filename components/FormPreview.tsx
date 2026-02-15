@@ -4,6 +4,8 @@ import { Form, QuestionType, Question } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { uploadImageToCloudinary } from '../services/cloudinaryService';
 
+const LOST_FOUND_ID = 'official-lost-found-v1';
+
 const ImageUploadQuestion = ({ q, value, onAnswer }: { q: Question, value: any, onAnswer: (v: any) => void }) => {
   const [preview, setPreview] = useState<string | null>(value || null);
   const [isUploading, setIsUploading] = useState(false);
@@ -59,22 +61,14 @@ const ImageUploadQuestion = ({ q, value, onAnswer }: { q: Question, value: any, 
 
 const DynamicListQuestion = ({ q, value, onAnswer, themeColor }: { q: Question, value: any, onAnswer: (v: any) => void, themeColor: string }) => {
   const entries = useMemo(() => Array.isArray(value) ? value : [{ id: 'init-1', col1: '', col2: '' }], [value]);
-
   const updateEntry = (id: string, updates: any) => {
     const updated = entries.map(e => e.id === id ? { ...e, ...updates } : e);
     onAnswer(updated);
   };
-
-  const addEntry = () => {
-    onAnswer([...entries, { id: Math.random().toString(36).substr(2, 9), col1: '', col2: '' }]);
-  };
-
+  const addEntry = () => onAnswer([...entries, { id: Math.random().toString(36).substr(2, 9), col1: '', col2: '' }]);
   const removeEntry = (id: string) => {
-    if (entries.length <= 1) {
-      onAnswer([{ id: Math.random().toString(36).substr(2, 9), col1: '', col2: '' }]);
-    } else {
-      onAnswer(entries.filter(e => e.id !== id));
-    }
+    if (entries.length <= 1) onAnswer([{ id: Math.random().toString(36).substr(2, 9), col1: '', col2: '' }]);
+    else onAnswer(entries.filter(e => e.id !== id));
   };
 
   return (
@@ -91,28 +85,12 @@ const DynamicListQuestion = ({ q, value, onAnswer, themeColor }: { q: Question, 
           <tbody className="divide-y">
             <AnimatePresence initial={false}>
               {entries.map((e, idx) => (
-                <motion.tr 
-                  key={e.id} 
-                  initial={{ opacity: 0, height: 0 }} 
-                  animate={{ opacity: 1, height: 'auto' }} 
-                  exit={{ opacity: 0, height: 0 }}
-                  className="bg-white group"
-                >
+                <motion.tr key={e.id} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="bg-white group">
                   <td className="p-2">
-                    <input 
-                      type="text" value={e.col1} 
-                      onChange={val => updateEntry(e.id, { col1: val.target.value })}
-                      placeholder="..."
-                      className="w-full p-3 bg-transparent border-none focus:ring-1 focus:ring-teal-100 rounded text-sm font-bold"
-                    />
+                    <input type="text" value={e.col1} onChange={val => updateEntry(e.id, { col1: val.target.value })} placeholder="..." className="w-full p-3 bg-transparent border-none focus:ring-1 focus:ring-teal-100 rounded text-sm font-bold" />
                   </td>
                   <td className="p-2">
-                    <input 
-                      type="text" value={e.col2} 
-                      onChange={val => updateEntry(e.id, { col2: val.target.value })}
-                      placeholder="..."
-                      className="w-full p-3 bg-transparent border-none focus:ring-1 focus:ring-teal-100 rounded text-sm font-bold"
-                    />
+                    <input type="text" value={e.col2} onChange={val => updateEntry(e.id, { col2: val.target.value })} placeholder="..." className="w-full p-3 bg-transparent border-none focus:ring-1 focus:ring-teal-100 rounded text-sm font-bold" />
                   </td>
                   <td className="p-2 text-center">
                     <button onClick={() => removeEntry(e.id)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-2">✕</button>
@@ -123,10 +101,7 @@ const DynamicListQuestion = ({ q, value, onAnswer, themeColor }: { q: Question, 
           </tbody>
         </table>
       </div>
-      <button 
-        onClick={addEntry}
-        className="flex items-center gap-2 px-6 py-3 border-2 border-dashed border-gray-200 rounded-xl hover:border-[#008272] hover:bg-teal-50/10 transition-all group w-full justify-center"
-      >
+      <button onClick={addEntry} className="flex items-center gap-2 px-6 py-3 border-2 border-dashed border-gray-200 rounded-xl hover:border-[#008272] hover:bg-teal-50/10 transition-all group w-full justify-center">
         <span className="text-lg text-gray-400 group-hover:text-[#008272]">+</span>
         <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-[#008272]">Add New Entry</span>
       </button>
@@ -147,6 +122,19 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
   const [ticketNumber, setTicketNumber] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const isAnswerEmpty = useCallback((ans: any, type: QuestionType) => {
+    if (ans === undefined || ans === null) return true;
+    if (typeof ans === 'string') return ans.trim() === '';
+    if (Array.isArray(ans)) return ans.length === 0;
+    if (type === QuestionType.DOUBLE_RANKING_BOX) {
+      const values = Object.values(ans);
+      if (values.length === 0) return true;
+      return !values.some((v: any) => (v.big && v.big.trim() !== '') || (v.small && v.small.trim() !== ''));
+    }
+    if (type === QuestionType.DYNAMIC_LIST) return !ans.some((v: any) => (v.col1 && v.col1.trim() !== '') || (v.col2 && v.col2.trim() !== ''));
+    return false;
+  }, []);
+
   const visibleQuestions = useMemo(() => {
     if (!form || !form.questions.length) return [];
     const questions = form.questions;
@@ -154,29 +142,67 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
     const visited = new Set<string>();
     let currentId: string | 'end' | 'next' = questions[0].id;
 
+    const pendingTargets: string[] = [];
+
     while (currentId && currentId !== 'end') {
       const q = questions.find(x => x.id === currentId);
       if (!q || visited.has(q.id)) break;
+      
       path.push(q);
       visited.add(q.id);
+      
       const answer = answers[q.id];
       let nextId: string | 'next' | 'end' = 'next';
-      if (q.type === QuestionType.CHOICE && !q.multipleSelection && answer) {
-        const selectedOpt = q.options?.find(o => o.text === answer);
-        if (selectedOpt?.branching?.nextQuestionId) nextId = selectedOpt.branching.nextQuestionId;
-        else if (q.enableBranching && q.branching?.nextQuestionId) nextId = q.branching.nextQuestionId;
-      } else if (q.enableBranching && q.branching?.nextQuestionId) {
+      
+      if (!isAnswerEmpty(answer, q.type)) {
+        if (q.type === QuestionType.CHOICE) {
+          const selectedValues = Array.isArray(answer) ? answer : [answer];
+          const logicJumps = selectedValues
+            .map(val => q.options?.find(o => o.text === val)?.branching?.nextQuestionId)
+            .filter(target => target && target !== 'next' && target !== 'end') as string[];
+          
+          if (logicJumps.length > 0) {
+            nextId = logicJumps[0];
+            if (logicJumps.length > 1) {
+              const remaining = logicJumps.slice(1);
+              remaining.reverse().forEach(t => {
+                if (!pendingTargets.includes(t)) pendingTargets.push(t);
+              });
+            }
+          }
+        }
+      }
+
+      if (nextId === 'next' && q.enableBranching && q.branching?.nextQuestionId) {
         nextId = q.branching.nextQuestionId;
       }
+
+      if (nextId !== 'next' && nextId !== 'end') {
+        const targetIdx = questions.findIndex(x => x.id === nextId);
+        const currentIdx = questions.findIndex(x => x.id === q.id);
+        if (targetIdx > currentIdx && pendingTargets.length > 0) {
+          nextId = pendingTargets.pop()!;
+        }
+      }
+
       if (nextId === 'next') {
-        const currentIndex = questions.findIndex(x => x.id === q.id);
-        const nextPhysical = questions[currentIndex + 1];
-        currentId = nextPhysical ? nextPhysical.id : 'end';
-      } else currentId = nextId;
-      if (q.required && (!answer || (Array.isArray(answer) && answer.length === 0))) break;
+        if (pendingTargets.length > 0) {
+          nextId = pendingTargets.pop()!;
+        } else {
+          const currentIndex = questions.findIndex(x => x.id === q.id);
+          const nextPhysical = questions[currentIndex + 1];
+          currentId = nextPhysical ? nextPhysical.id : 'end';
+        }
+      } else {
+        currentId = nextId;
+      }
+
+      // MODIFIED: Do not break the pathfinding loop just because a required field is empty IF we have pending logic targets.
+      // This allows all branches selected in a multi-choice question to appear as soon as they are clicked.
+      if (q.required && isAnswerEmpty(answer, q.type) && pendingTargets.length === 0) break;
     }
     return path;
-  }, [form, answers]);
+  }, [form, answers, isAnswerEmpty]);
 
   const handleAnswer = useCallback((qId: string, value: any) => {
     setAnswers(prev => ({ ...prev, [qId]: value }));
@@ -185,8 +211,9 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
   const handleSubmit = useCallback(async () => {
     if (!form) return;
     for (const q of visibleQuestions) {
-      if (q.required && (!answers[q.id] || (Array.isArray(answers[q.id]) && answers[q.id].length === 0))) {
-        document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (q.required && isAnswerEmpty(answers[q.id], q.type)) {
+        const element = document.getElementById(`q-${q.id}`);
+        if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         alert(`Required: ${q.title}`);
         return;
       }
@@ -202,7 +229,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
     } finally {
       setIsSubmitting(false);
     }
-  }, [answers, onSubmit, form, visibleQuestions]);
+  }, [answers, onSubmit, form, visibleQuestions, isAnswerEmpty]);
 
   if (!form) return null;
 
@@ -244,63 +271,33 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
         <div className="max-w-3xl w-full space-y-6">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white/95 backdrop-blur-md rounded shadow-xl border-l-[16px] p-12 md:p-16 relative overflow-hidden" style={{ borderLeftColor: theme.primaryColor }}>
             <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-              {theme.headerBackgroundVideoUrl && (
-                <video key={theme.headerBackgroundVideoUrl} src={theme.headerBackgroundVideoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover opacity-10" />
-              )}
-              {theme.headerBackgroundImage && (
-                <img src={theme.headerBackgroundImage} className="w-full h-full object-cover opacity-10" />
-              )}
+              {theme.headerBackgroundVideoUrl && <video key={theme.headerBackgroundVideoUrl} src={theme.headerBackgroundVideoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover opacity-10" />}
+              {theme.headerBackgroundImage && <img src={theme.headerBackgroundImage} className="w-full h-full object-cover opacity-10" />}
             </div>
-            
             <div className="relative z-10">
               {theme.logoUrl && (
                 <div className={`mb-12 flex ${theme.logoAlignment === 'center' ? 'justify-center' : (theme.logoAlignment === 'right' ? 'justify-end' : 'justify-start')}`}>
                   <img src={theme.logoUrl} style={{ width: `${(theme.logoScale || 100) * 0.7}px` }} className="h-auto object-contain" alt="Logo" />
                 </div>
               )}
-              <h1 className="text-4xl md:text-5xl font-black text-[#323130] mb-10 tracking-tighter leading-tight" style={{ 
-                fontSize: `${form.titleFormatting?.fontSize || 40}px`,
-                textAlign: form.titleFormatting?.textAlign || 'left',
-                fontWeight: form.titleFormatting?.bold ? '900' : '700',
-                fontStyle: form.titleFormatting?.italic ? 'italic' : 'normal'
-              }}>{form.title}</h1>
+              <h1 className="text-4xl md:text-5xl font-black text-[#323130] mb-10 tracking-tighter leading-tight">{form.title}</h1>
               <div className="space-y-6">
-                {(form.descriptions ?? []).map(d => (
-                  <p key={d.id} className={`text-gray-500 font-medium leading-relaxed ${d.formatting?.italic ? 'italic' : ''}`} style={{ 
-                    textAlign: d.formatting?.textAlign || 'left', 
-                    fontSize: `${d.formatting?.fontSize || 16}px`,
-                    fontWeight: d.formatting?.bold ? 'bold' : 'normal'
-                  }}>{d.text}</p>
-                ))}
+                {(form.descriptions ?? []).map(d => <p key={d.id} className="text-gray-500 font-medium leading-relaxed">{d.text}</p>)}
               </div>
             </div>
           </motion.div>
 
           <AnimatePresence mode="popLayout">
             {visibleQuestions.map((q, idx) => (
-              <motion.div 
-                key={q.id} id={`q-${q.id}`} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white/95 backdrop-blur-md p-10 md:p-14 rounded shadow-lg border-l-[12px]" 
-                style={{ borderLeftColor: theme.primaryColor }}
-              >
+              <motion.div key={q.id} id={`q-${q.id}`} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white/95 backdrop-blur-md p-10 md:p-14 rounded shadow-lg border-l-[12px]" style={{ borderLeftColor: theme.primaryColor }}>
                 <div className="mb-8">
                   <span className="text-[10px] font-black uppercase text-gray-400 tracking-[0.3em] mb-3 block">Question {idx + 1}</span>
-                  <h3 className="text-2xl md:text-3xl font-black text-[#323130] leading-tight" style={{
-                    fontSize: `${q.titleFormatting?.fontSize || 24}px`,
-                    textAlign: q.titleFormatting?.textAlign || 'left',
-                    fontStyle: q.titleFormatting?.italic ? 'italic' : 'normal',
-                    fontWeight: q.titleFormatting?.bold ? '900' : '700'
-                  }}>
-                    {q.title} {q.required && <span className="text-red-500 ml-1">*</span>}
-                  </h3>
+                  <h3 className="text-2xl md:text-3xl font-black text-[#323130] leading-tight">{q.title} {q.required && <span className="text-red-500 ml-1">*</span>}</h3>
                   {q.subtitle && <p className="text-gray-400 italic text-sm mt-3">{q.subtitle}</p>}
                 </div>
-                
                 <div className="space-y-6">
                   {q.type === QuestionType.IMAGE_UPLOAD && <ImageUploadQuestion q={q} value={answers?.[q.id]} onAnswer={val => handleAnswer(q.id, val)} />}
-                  
                   {q.type === QuestionType.DYNAMIC_LIST && <DynamicListQuestion q={q} value={answers?.[q.id]} onAnswer={val => handleAnswer(q.id, val)} themeColor={theme.primaryColor} />}
-
                   {q.type === QuestionType.CHOICE && (
                     <div className="space-y-3">
                       {q.options?.map(o => {
@@ -319,36 +316,6 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
                       })}
                     </div>
                   )}
-
-                  {q.type === QuestionType.RANKING && (
-                    <div className="space-y-3">
-                      <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-4">Tap items in order of preference</p>
-                      {q.options?.map(o => {
-                        const currentRanking = Array.isArray(answers?.[q.id]) ? answers[q.id] : [];
-                        const rank = currentRanking.indexOf(o.text) + 1;
-                        const isRanked = rank > 0;
-                        
-                        return (
-                          <div 
-                            key={o.id} 
-                            onClick={() => {
-                              const newRanking = isRanked 
-                                ? currentRanking.filter((item: string) => item !== o.text)
-                                : [...currentRanking, o.text];
-                              handleAnswer(q.id, newRanking);
-                            }}
-                            className={`flex items-center gap-4 p-5 border-2 rounded-xl cursor-pointer transition-all active:scale-[0.99] group ${isRanked ? 'border-[#008272] bg-teal-50/20' : 'border-gray-100 hover:border-gray-300'}`}
-                          >
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black transition-all ${isRanked ? 'bg-[#008272] text-white shadow-lg scale-110' : 'bg-gray-100 text-gray-400'}`}>
-                              {isRanked ? rank : ''}
-                            </div>
-                            <span className={`font-black text-sm uppercase tracking-wider ${isRanked ? 'text-[#008272]' : 'text-[#323130]'}`}>{o.text}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
                   {q.type === QuestionType.DOUBLE_RANKING_BOX && (
                     <div className="overflow-x-auto -mx-4 md:mx-0">
                       <table className="w-full text-left border-separate border-spacing-y-4">
@@ -362,32 +329,18 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
                         <tbody>
                           {q.options?.map(opt => (
                             <tr key={opt.id} className="group">
-                              <td className="px-4 py-3 bg-white rounded-l-xl border-y border-l border-gray-100 align-middle">
-                                <span className="font-black text-xs uppercase tracking-wider text-[#323130]">{opt.text}</span>
-                              </td>
+                              <td className="px-4 py-3 bg-white rounded-l-xl border-y border-l border-gray-100 align-middle"><span className="font-black text-xs uppercase tracking-wider text-[#323130]">{opt.text}</span></td>
                               <td className="px-4 py-3 bg-white border-y border-gray-100 align-middle">
-                                <input 
-                                  type="text" 
-                                  className="w-full p-3 bg-white border border-gray-200 rounded font-bold text-sm text-[#323130] placeholder:text-gray-300 focus:border-[#008272] focus:ring-1 focus:ring-[#008272] outline-none transition-all shadow-sm" 
-                                  placeholder="Enter response..."
-                                  value={answers?.[q.id]?.[opt.id]?.big || ''}
-                                  onChange={e => {
-                                    const current = answers?.[q.id] || {};
-                                    handleAnswer(q.id, { ...current, [opt.id]: { ...(current[opt.id] || {}), big: e.target.value } });
-                                  }}
-                                />
+                                <input type="text" className="w-full p-3 bg-white border border-gray-200 rounded font-bold text-sm text-[#323130] placeholder:text-gray-300 focus:border-[#008272] focus:ring-1 focus:ring-[#008272] outline-none" placeholder="Enter response..." value={answers?.[q.id]?.[opt.id]?.big || ''} onChange={e => {
+                                  const current = answers?.[q.id] || {};
+                                  handleAnswer(q.id, { ...current, [opt.id]: { ...(current[opt.id] || {}), big: e.target.value } });
+                                }} />
                               </td>
                               <td className="px-4 py-3 bg-white border-y border-r rounded-r-xl border-gray-100 align-middle w-24">
-                                <input 
-                                  type="text" 
-                                  className="w-full p-3 bg-white border border-gray-200 rounded font-black text-center text-sm text-[#323130] placeholder:text-gray-300 focus:border-[#008272] focus:ring-1 focus:ring-[#008272] outline-none transition-all shadow-sm" 
-                                  placeholder="Value"
-                                  value={answers?.[q.id]?.[opt.id]?.small || ''}
-                                  onChange={e => {
-                                    const current = answers?.[q.id] || {};
-                                    handleAnswer(q.id, { ...current, [opt.id]: { ...(current[opt.id] || {}), small: e.target.value } });
-                                  }}
-                                />
+                                <input type="text" className="w-full p-3 bg-white border border-gray-200 rounded font-black text-center text-sm" placeholder="Value" value={answers?.[q.id]?.[opt.id]?.small || ''} onChange={e => {
+                                  const current = answers?.[q.id] || {};
+                                  handleAnswer(q.id, { ...current, [opt.id]: { ...(current[opt.id] || {}), small: e.target.value } });
+                                }} />
                               </td>
                             </tr>
                           ))}
@@ -395,20 +348,8 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, isGuest, onBack, onSubm
                       </table>
                     </div>
                   )}
-
-                  {q.type === QuestionType.TEXT && (
-                    <textarea className="w-full border-2 border-gray-100 p-5 rounded bg-gray-50 focus:bg-white focus:border-[#008272] transition-all outline-none font-bold text-base min-h-[120px] text-[#323130]" placeholder="Type your response..." value={answers?.[q.id] || ''} onChange={e => handleAnswer(q.id, e.target.value)} />
-                  )}
-
-                  {q.type === QuestionType.DATE && (
-                    <input type="date" className="w-full border-2 border-gray-100 p-5 rounded bg-gray-50 font-black outline-none focus:border-[#008272] text-lg text-[#323130]" value={answers?.[q.id] || ''} onChange={e => handleAnswer(q.id, e.target.value)} />
-                  )}
-                  
-                  {q.type === QuestionType.SECTION && (
-                    <div className="border-y-2 border-dashed border-[#008272]/20 py-8 my-4 text-center">
-                       <p className="text-[10px] font-black uppercase text-[#008272] tracking-[0.4em]">Next Section</p>
-                    </div>
-                  )}
+                  {q.type === QuestionType.TEXT && <textarea className="w-full border-2 border-gray-100 p-5 rounded bg-gray-50 focus:bg-white focus:border-[#008272] transition-all outline-none font-bold text-base min-h-[120px]" placeholder="Type your response..." value={answers?.[q.id] || ''} onChange={e => handleAnswer(q.id, e.target.value)} />}
+                  {q.type === QuestionType.DATE && <input type="date" className="w-full border-2 border-gray-100 p-5 rounded bg-gray-50 font-black outline-none focus:border-[#008272] text-lg" value={answers?.[q.id] || ''} onChange={e => handleAnswer(q.id, e.target.value)} />}
                 </div>
               </motion.div>
             ))}

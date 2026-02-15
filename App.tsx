@@ -48,32 +48,35 @@ const LOST_AND_FOUND_TEMPLATE: Form = {
     {
       id: 'q-category',
       type: QuestionType.CHOICE,
-      title: 'VALUABLE / NON VALUABEL / ALCOHOL',
+      title: 'ITEM',
       multipleSelection: true,
       required: true,
+      enableBranching: true,
       options: [
-        { id: 'cat-alc', text: 'ALCOHOL' },
-        { id: 'cat-val', text: 'VALUABLE' },
-        { id: 'cat-non', text: 'NON VALUABLE' }
+        { id: 'cat-alc', text: 'ALCOHOL', branching: { nextQuestionId: 'q-alcohol-details' } },
+        { id: 'cat-val', text: 'VALUABLE', branching: { nextQuestionId: 'q-valuable-details' } },
+        { id: 'cat-non', text: 'NON VALUABLE', branching: { nextQuestionId: 'q-non-valuable-details' } }
       ]
     },
     {
       id: 'q-alcohol-details',
       type: QuestionType.DOUBLE_RANKING_BOX,
-      title: 'SEALED /UNSEALED',
+      title: 'SEALED / UNSEALED',
       columnName: 'ALCOHOL NAME',
       columnNameSmall: 'QUANTITY',
-      required: false,
+      required: true,
+      enableBranching: true,
+      branching: { nextQuestionId: 'q-item-desc' },
       options: [
         { id: 'alc-unsealed', text: 'UNSEALED' }, { id: 'alc-750', text: 'SEALED 750 ML' },
         { id: 'alc-1l', text: 'SEALED 1L' }, { id: 'alc-1500', text: 'SEALED 1500 ML' }, { id: 'alc-others', text: 'OTHERS' }
       ]
     },
-    { id: 'q-valuable-details', type: QuestionType.TEXT, title: 'VALUABLE', subtitle: 'VALUABLE(Jewelry, Phone , Watch , Money etc..)', required: false },
-    { id: 'q-non-valuable-details', type: QuestionType.TEXT, title: 'NON VALUABLE', subtitle: 'NON VALUABLE (Clothes, Shoes, Cosmetics etc..)', required: false },
+    { id: 'q-valuable-details', type: QuestionType.TEXT, title: 'VALUABLE DETAILS', subtitle: 'Jewelry, Phone, Watch, Money etc.', required: true, enableBranching: true, branching: { nextQuestionId: 'q-item-desc' } },
+    { id: 'q-non-valuable-details', type: QuestionType.TEXT, title: 'NON VALUABLE DETAILS', subtitle: 'Clothes, Shoes, Cosmetics etc.', required: true, enableBranching: true, branching: { nextQuestionId: 'q-item-desc' } },
     { id: 'q-item-desc', type: QuestionType.TEXT, title: 'ITEM DESCRIPTION', required: true },
     { id: 'q-item-pic', type: QuestionType.IMAGE_UPLOAD, title: 'ITEM PICTURE', required: true },
-    { id: 'q-contact', type: QuestionType.TEXT, title: 'CONTACT DETAILS', required: true },
+    { id: 'q-contact', type: QuestionType.TEXT, title: 'CONTACT DETAILS (FOUND BY)', required: true },
     { id: 'q-remarks', type: QuestionType.TEXT, title: 'COMMENTS (REMARKS)', required: false }
   ],
   createdAt: new Date().toISOString(),
@@ -91,8 +94,6 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Synchronization effect: Only initialize the official registry if it is completely missing.
-  // This allows users to add/edit questions without them being overwritten by the template.
   useEffect(() => {
     if (currentUser) {
       const existingForm = currentUser.forms.find(f => f.id === LOST_FOUND_ID);
@@ -105,7 +106,7 @@ const App: React.FC = () => {
         saveForm(currentUser.id, LOST_AND_FOUND_TEMPLATE);
       }
     }
-  }, [currentUser?.id]); // Only re-run if the active user ID changes
+  }, [currentUser?.id]);
 
   useEffect(() => {
     if (!isLoading && users.length > 0) localStorage.setItem('forms_pro_local_backup', JSON.stringify(users));
@@ -165,7 +166,16 @@ const App: React.FC = () => {
     init();
   }, []);
 
-  const activeForm = useMemo(() => liveForm || (currentUser ? currentUser.forms.find(f => f.id === activeFormId) : null) || null, [liveForm, currentUser, activeFormId]);
+  const activeForm = useMemo(() => {
+    if (liveForm) return liveForm;
+    if (currentUser) {
+      const f = currentUser.forms.find(f => f.id === activeFormId);
+      if (f) return f;
+    }
+    if (activeFormId === LOST_FOUND_ID) return LOST_AND_FOUND_TEMPLATE;
+    return null;
+  }, [liveForm, currentUser, activeFormId]);
+
   const handleLogin = useCallback((user: User) => { setCurrentUser(user); localStorage.setItem(SESSION_KEY, user.id); setCurrentView('dashboard'); window.location.hash = ''; }, []);
   const handleSignOut = useCallback(() => { setCurrentUser(null); localStorage.removeItem(SESSION_KEY); window.location.hash = ''; setActiveFormId(null); }, []);
   const handleUpdateUser = useCallback(async (updatedUser: User) => { setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u)); if (currentUser?.id === updatedUser.id) { setCurrentUser(updatedUser); localStorage.setItem(SESSION_KEY, updatedUser.id); } await saveDatabase([updatedUser]); }, [currentUser]);
@@ -194,7 +204,7 @@ const App: React.FC = () => {
       )}
       <main className={`flex-grow pb-12 ${currentView !== 'preview' ? 'pt-12' : ''}`}>
         {currentView === 'dashboard' && currentUser && <Dashboard forms={currentUser.forms.filter(f => !f.deletedAt)} onCreate={() => { const f: Form = { id: Math.random().toString(36).substr(2, 9), title: 'Untitled Form', descriptions: [], questions: [], createdAt: new Date().toISOString(), responses: [], isPublished: true }; handleUpdateForms([...currentUser.forms, f]); setActiveFormId(f.id); setCurrentView('editor'); }} onSelect={id => { setActiveFormId(id); setCurrentView('editor'); }} onDelete={id => { if (id === LOST_FOUND_ID) return alert("Official registry forms cannot be archived."); handleUpdateForms(currentUser.forms.map(f => f.id === id ? {...f, deletedAt: new Date().toISOString()} : f)); }} onDuplicate={f => handleUpdateForms([...currentUser.forms, {...f, id: Math.random().toString(36).substr(2, 9), title: `${f.title} (Copy)`, responses: [], createdAt: new Date().toISOString(), isPublished: false}])} onViewResponses={id => { setActiveFormId(id); setCurrentView('responses'); }} onViewRecycleBin={() => setCurrentView('recycle-bin')} />}
-        {currentView === 'editor' && activeForm && <FormEditor form={activeForm} onBack={() => { setCurrentView('dashboard'); window.location.hash = ''; setActiveFormId(null); }} onPreview={() => { window.location.hash = `preview/${activeForm.id}`; setCurrentView('preview'); }} onViewResponses={() => setCurrentView('responses')} onDelete={() => { if (activeForm.id === LOST_FOUND_ID) return alert("Official registry forms cannot be archived."); if (confirm('Move to Recycle Bin?')) { handleUpdateForms(currentUser!.forms.map(f => f.id === activeForm.id ? {...f, deletedAt: new Date().toISOString()} : f)); setCurrentView('dashboard'); } }} onUpdate={updated => handleUpdateForms(currentUser!.forms.map(f => f.id === updated.id ? updated : f))} />}
+        {currentView === 'editor' && activeForm && <FormEditor form={activeForm} onBack={() => { setCurrentView('dashboard'); window.location.hash = ''; setActiveFormId(null); }} onPreview={() => { window.location.hash = `preview/${activeForm.id}`; setCurrentView('preview'); }} onViewResponses={() => setCurrentView('responses')} onDelete={() => { if (activeForm.id === LOST_FOUND_ID) return alert("Official registry forms cannot be archived."); if (confirm('Move to Recycle Bin?')) { handleUpdateForms(currentUser!.forms.map(f => f.id === activeForm.id ? {...f, deletedAt: new Date().toISOString()} : f)); setCurrentView('dashboard'); } }} onUpdate={updated => handleUpdateForms(currentUser!.forms.map(item => item.id === updated.id ? updated : item))} />}
         {currentView === 'preview' && (
           <FormPreview 
             form={activeForm} isGuest={!currentUser} onBack={() => { if (currentUser) { setCurrentView('editor'); window.location.hash = ''; } else { window.location.hash = ''; setCurrentView('dashboard'); } }} 
@@ -203,35 +213,18 @@ const App: React.FC = () => {
               let lastSN = (activeForm?.responses?.length || 0);
               
               if (fid === LOST_FOUND_ID) {
-                // For Lost & Found, we split multi-category reports into individual entries.
-                // We must also ensure any newly added custom questions are included in the 'shared' data.
-                const categories = Array.isArray(answers['q-category']) ? answers['q-category'] : [answers['q-category']];
+                const catsRaw = answers['q-category'];
+                const categories = Array.isArray(catsRaw) ? catsRaw : (catsRaw ? [catsRaw] : []);
                 
-                // Collect all answers that aren't specific to the multi-entry logic
-                const baseAnswers = { ...answers };
-                delete baseAnswers['q-category'];
-                delete baseAnswers['q-alcohol-details'];
-                delete baseAnswers['q-valuable-details'];
-                delete baseAnswers['q-non-valuable-details'];
-
                 const submissions = categories.map(cat => {
-                  let catKey: any = 'GENERAL';
-                  const specific: any = {};
-                  if (cat === 'ALCOHOL') { catKey = 'ALCOHOL'; specific['q-alcohol-details'] = answers['q-alcohol-details']; }
-                  else if (cat === 'VALUABLE') { catKey = 'VALUABLE'; specific['q-valuable-details'] = answers['q-valuable-details']; }
-                  else if (cat === 'NON VALUABLE') { catKey = 'NON_VALUABLE'; specific['q-non-valuable-details'] = answers['q-non-valuable-details']; }
-                  
                   lastSN++;
-                  return { 
-                    id: Math.random().toString(36).substr(2, 9), 
-                    formId: fid, 
-                    timestamp: new Date().toISOString(), 
-                    answers: { ...baseAnswers, ...specific, 'q-category': [cat] }, 
-                    serialNumber: lastSN, 
-                    category: catKey 
-                  };
+                  let catKey: any = 'GENERAL';
+                  if (cat === 'ALCOHOL') catKey = 'ALCOHOL';
+                  else if (cat === 'VALUABLE') catKey = 'VALUABLE';
+                  else if (cat === 'NON VALUABLE') catKey = 'NON_VALUABLE';
+                  
+                  return { id: Math.random().toString(36).substr(2, 9), formId: fid, timestamp: new Date().toISOString(), answers, serialNumber: lastSN, category: catKey };
                 });
-                
                 for (const sub of submissions) await saveResponse(fid, sub);
                 return lastSN;
               } else {
