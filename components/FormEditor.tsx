@@ -53,7 +53,10 @@ const STOCK_HEADER_MEDIA = [
   { type: 'image', url: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3', label: 'Festival' }
 ];
 
-const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPreview, onViewResponses }) => {
+const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPreview, onViewResponses, onDelete }) => {
+  const LOST_FOUND_ID = 'official-lost-found-v1';
+  const isOfficial = form.id === LOST_FOUND_ID;
+
   const [showShare, setShowShare] = useState(false);
   const [showThemePane, setShowThemePane] = useState(false);
   const [showAIPane, setShowAIPane] = useState(false);
@@ -180,7 +183,6 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
 
       {showShare && <ShareDialog formId={form.id} onClose={() => setShowShare(false)} />}
       
-      {/* FROZEN NAVIGATION BAR - NOW USING FIXED POSITIONING */}
       <nav className="bg-white/95 backdrop-blur-md border-b fixed top-12 left-0 w-full z-[90] px-6 h-12 flex items-center justify-between shadow-md">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-1 hover:bg-gray-100 rounded text-[#008272]">←</button>
@@ -191,6 +193,9 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
            <button onClick={onViewResponses} className="px-4 h-full text-[11px] font-bold uppercase tracking-widest text-[#605e5c] hover:text-[#323130]">Responses ({form.responses.length})</button>
         </div>
         <div className="flex items-center gap-2">
+          {!isOfficial && (
+             <button onClick={onDelete} className="text-red-500 px-3 py-1.5 rounded font-bold text-[10px] uppercase tracking-widest hover:bg-red-50">Archive</button>
+          )}
           <button 
             onClick={() => { setShowAIPane(!showAIPane); setShowThemePane(false); }} 
             className="px-3 py-1.5 rounded text-[10px] font-black uppercase tracking-widest bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow hover:brightness-110 transition-all flex items-center gap-1.5"
@@ -359,7 +364,6 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onUpdate, onBack, onPrevi
         )}
       </AnimatePresence>
 
-      {/* ADDED PADDING TOP TO OFFSET THE FIXED HEADERS (48px App + 48px Nav = 96px) */}
       <main className="flex-1 py-10 relative pt-[96px]">
         <div className="max-w-3xl mx-auto space-y-8 px-4">
           <div className="bg-white/95 backdrop-blur-md rounded-md shadow-lg border-t-[10px] p-10 relative min-h-[400px] overflow-hidden" style={{ borderTopColor: theme.primaryColor }}>
